@@ -1,0 +1,286 @@
+-- =====================================================================
+-- TRIVELA · Esquema de base de datos (Supabase / PostgreSQL)
+-- Pegar completo en Supabase → SQL Editor → Run. Se puede correr de nuevo sin romper nada.
+-- =====================================================================
+
+create extension if not exists pgcrypto;
+
+-- ---------- Administradores ----------
+-- Solo los correos de esta tabla pueden entrar al panel y modificar datos.
+create table if not exists public.admins (
+  email text primary key
+);
+
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (select 1 from public.admins where lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+$$;
+
+-- ---------- Ajustes de la tienda (una sola fila) ----------
+create table if not exists public.settings (
+  id int primary key default 1 check (id = 1),
+  store_name text not null default 'Trivela',
+  whatsapp text not null default '',            -- solo dígitos con código de país, ej. 573001234567
+  bs_rate numeric(14,2),                         -- bolívares por 1 USD (vacío = se cobra "$ en Bs")
+  pickup_info text not null default '',
+  delivery_info text not null default '',
+  payment_methods jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.settings (id, payment_methods, pickup_info, delivery_info)
+values (1,
+  '[{"name":"Efectivo $","currency":"USD","details":"Pagas en dólares al recibir.","enabled":true},
+    {"name":"Efectivo pesos","currency":"COP","details":"Pagas en pesos al recibir.","enabled":true},
+    {"name":"Bolívares","currency":"BS","details":"Pago Móvil o transferencia a la tasa del día.","enabled":true},
+    {"name":"Binance","currency":"USD","details":"Te enviamos el ID de Binance Pay por WhatsApp.","enabled":true},
+    {"name":"Bancolombia","currency":"COP","details":"Te enviamos los datos de la cuenta por WhatsApp.","enabled":true},
+    {"name":"Zinli","currency":"USD","details":"Te enviamos el correo de Zinli por WhatsApp.","enabled":true}]'::jsonb,
+  'Coordinamos el punto de entrega por WhatsApp.',
+  'El costo depende de la zona; te lo confirmamos por WhatsApp.')
+on conflict (id) do nothing;
+
+-- ---------- Franelas ----------
+create table if not exists public.products (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  category text not null default 'Selección',   -- Selección, Club, Retro…
+  kit text not null default 'Local',              -- Local, Visitante, Alternativa…
+  collection text not null default '',            -- ej. Mundial 2026
+  badge text not null default '',                 -- ej. Bordada
+  description text not null default '',
+  price_usd numeric(10,2) not null default 25,
+  price_cop numeric(12,0) not null default 75000,
+  image_url text,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Stock por talla
+create table if not exists public.variants (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete cascade,
+  size text not null,
+  stock int not null default 0 check (stock >= 0),
+  unique (product_id, size)
+);
+
+-- ---------- Pedidos ----------
+create sequence if not exists public.order_code_seq start 1;
+
+create table if not exists public.orders (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,   -- TV-0001, TV-0002… se asigna solo cuando el pedido se completa
+  customer_name text not null,
+  customer_phone text not null,
+  delivery text not null check (delivery in ('pickup', 'delivery')),
+  address text not null default '',
+  payment_method text not null,
+  currency text not null check (currency in ('USD', 'COP', 'BS')),
+  total_usd numeric(10,2) not null,
+  total_cop numeric(12,0) not null,
+  total_bs numeric(14,2),
+  status text not null default 'pendiente' check (status in ('pendiente', 'pagado', 'entregado', 'cancelado')),
+  notes text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  product_id uuid references public.products(id) on delete set null,
+  variant_id uuid references public.variants(id) on delete set null,
+  product_name text not null,
+  size text not null,
+  qty int not null check (qty > 0),
+  unit_usd numeric(10,2) not null,
+  unit_cop numeric(12,0) not null
+);
+
+create index if not exists orders_created_idx on public.orders (created_at desc);
+create index if not exists order_items_order_idx on public.order_items (order_id);
+create index if not exists variants_product_idx on public.variants (product_id);
+
+-- ---------- Seguridad (RLS) ----------
+alter table public.admins enable row level security;
+alter table public.settings enable row level security;
+alter table public.products enable row level security;
+alter table public.variants enable row level security;
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+
+drop policy if exists "admins se ven a si mismos" on public.admins;
+create policy "admins se ven a si mismos" on public.admins for select using (public.is_admin());
+
+drop policy if exists "todos leen ajustes" on public.settings;
+create policy "todos leen ajustes" on public.settings for select using (true);
+drop policy if exists "admin edita ajustes" on public.settings;
+create policy "admin edita ajustes" on public.settings for update using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "todos leen franelas activas" on public.products;
+create policy "todos leen franelas activas" on public.products for select using (active or public.is_admin());
+drop policy if exists "admin gestiona franelas" on public.products;
+create policy "admin gestiona franelas" on public.products for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "todos leen stock" on public.variants;
+create policy "todos leen stock" on public.variants for select using (true);
+drop policy if exists "admin gestiona stock" on public.variants;
+create policy "admin gestiona stock" on public.variants for all using (public.is_admin()) with check (public.is_admin());
+
+-- Los clientes NO leen ni escriben pedidos directo: solo a través de create_order()
+drop policy if exists "admin gestiona pedidos" on public.orders;
+create policy "admin gestiona pedidos" on public.orders for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "admin gestiona items" on public.order_items;
+create policy "admin gestiona items" on public.order_items for all using (public.is_admin()) with check (public.is_admin());
+
+-- ---------- Crear pedido (lo usa el cliente) ----------
+-- Valida stock, lo descuenta (queda apartado) y guarda el pedido, todo en una sola transacción.
+create or replace function public.create_order(
+  p_customer_name text,
+  p_customer_phone text,
+  p_delivery text,
+  p_address text,
+  p_payment_method text,
+  p_items jsonb
+) returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_currency text;
+  v_rate numeric;
+  v_order_id uuid;
+  v_code text;
+  v_total_usd numeric := 0;
+  v_total_cop numeric := 0;
+  v_total_bs numeric;
+  v_item jsonb;
+  v_qty int;
+  r record;
+begin
+  if coalesce(trim(p_customer_name), '') = '' or coalesce(trim(p_customer_phone), '') = '' then
+    raise exception 'Escribe tu nombre y tu WhatsApp';
+  end if;
+  if p_delivery not in ('pickup', 'delivery') then
+    raise exception 'Elige pickup o delivery';
+  end if;
+  if p_delivery = 'delivery' and coalesce(trim(p_address), '') = '' then
+    raise exception 'Escribe la dirección de entrega';
+  end if;
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+    raise exception 'El carrito está vacío';
+  end if;
+  if jsonb_array_length(p_items) > 30 then
+    raise exception 'Demasiados productos en un pedido';
+  end if;
+
+  select pm ->> 'currency', s.bs_rate into v_currency, v_rate
+  from public.settings s, jsonb_array_elements(s.payment_methods) pm
+  where s.id = 1 and pm ->> 'name' = p_payment_method and coalesce((pm ->> 'enabled')::boolean, true)
+  limit 1;
+  if v_currency is null then
+    raise exception 'Ese método de pago no está disponible';
+  end if;
+
+  v_order_id := gen_random_uuid();
+  insert into public.orders (id, code, customer_name, customer_phone, delivery, address, payment_method, currency, total_usd, total_cop)
+  values (v_order_id, v_order_id::text, left(trim(p_customer_name), 80), left(trim(p_customer_phone), 30), p_delivery,
+          left(coalesce(trim(p_address), ''), 240), p_payment_method, v_currency, 0, 0);
+
+  for v_item in select * from jsonb_array_elements(p_items) loop
+    v_qty := (v_item ->> 'qty')::int;
+    if v_qty is null or v_qty < 1 or v_qty > 20 then
+      raise exception 'Cantidad no válida';
+    end if;
+
+    select v.id as variant_id, v.size, v.stock, p.id as product_id, p.name, p.price_usd, p.price_cop, p.active
+    into r
+    from public.variants v join public.products p on p.id = v.product_id
+    where v.id = (v_item ->> 'variant_id')::uuid
+    for update of v;
+
+    if not found or not r.active then
+      raise exception 'Una de las franelas ya no está disponible';
+    end if;
+    if r.stock < v_qty then
+      raise exception 'Ya no queda stock de % talla %', r.name, r.size;
+    end if;
+
+    update public.variants set stock = stock - v_qty where id = r.variant_id;
+
+    insert into public.order_items (order_id, product_id, variant_id, product_name, size, qty, unit_usd, unit_cop)
+    values (v_order_id, r.product_id, r.variant_id, r.name, r.size, v_qty, r.price_usd, r.price_cop);
+
+    v_total_usd := v_total_usd + r.price_usd * v_qty;
+    v_total_cop := v_total_cop + r.price_cop * v_qty;
+  end loop;
+
+  if v_rate is not null then
+    v_total_bs := round(v_total_usd * v_rate, 2);
+  end if;
+
+  -- El número se toma al final: si algo falla antes, no se pierde ningún número
+  v_code := 'TV-' || lpad(nextval('public.order_code_seq')::text, 4, '0');
+
+  update public.orders set code = v_code, total_usd = v_total_usd, total_cop = v_total_cop, total_bs = v_total_bs
+  where id = v_order_id;
+
+  return jsonb_build_object('code', v_code, 'total_usd', v_total_usd, 'total_cop', v_total_cop,
+                            'total_bs', v_total_bs, 'currency', v_currency);
+end;
+$$;
+
+revoke all on function public.create_order(text, text, text, text, text, jsonb) from public;
+grant execute on function public.create_order(text, text, text, text, text, jsonb) to anon, authenticated;
+
+-- ---------- Cambiar estado de un pedido (lo usa el admin) ----------
+-- Si se cancela, las tallas vuelven al stock.
+create or replace function public.set_order_status(p_order_id uuid, p_status text)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_old text;
+begin
+  if not public.is_admin() then
+    raise exception 'No autorizado';
+  end if;
+  if p_status not in ('pendiente', 'pagado', 'entregado', 'cancelado') then
+    raise exception 'Estado no válido';
+  end if;
+
+  select status into v_old from public.orders where id = p_order_id for update;
+  if v_old is null then
+    raise exception 'Pedido no encontrado';
+  end if;
+  if v_old = 'cancelado' then
+    raise exception 'Un pedido cancelado no se puede reabrir; crea uno nuevo';
+  end if;
+
+  if p_status = 'cancelado' then
+    update public.variants v set stock = v.stock + i.qty
+    from public.order_items i
+    where i.order_id = p_order_id and i.variant_id = v.id;
+  end if;
+
+  update public.orders set status = p_status where id = p_order_id;
+end;
+$$;
+
+revoke all on function public.set_order_status(uuid, text) from public;
+grant execute on function public.set_order_status(uuid, text) to authenticated;
+
+-- ---------- Fotos (Storage) ----------
+insert into storage.buckets (id, name, public) values ('productos', 'productos', true)
+on conflict (id) do nothing;
+
+drop policy if exists "admin sube fotos" on storage.objects;
+create policy "admin sube fotos" on storage.objects for insert to authenticated
+  with check (bucket_id = 'productos' and public.is_admin());
+drop policy if exists "admin cambia fotos" on storage.objects;
+create policy "admin cambia fotos" on storage.objects for update to authenticated
+  using (bucket_id = 'productos' and public.is_admin());
+drop policy if exists "admin borra fotos" on storage.objects;
+create policy "admin borra fotos" on storage.objects for delete to authenticated
+  using (bucket_id = 'productos' and public.is_admin());
