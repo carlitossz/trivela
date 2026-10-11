@@ -24,7 +24,7 @@ function Ball(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-type IconName = 'back' | 'bag' | 'search' | 'wa' | 'plus' | 'minus' | 'trash' | 'check' | 'x' | 'home' | 'box' | 'shirt' | 'list' | 'gear' | 'out' | 'up' | 'edit' | 'refresh' | 'pin' | 'truck'
+type IconName = 'back' | 'bag' | 'search' | 'wa' | 'plus' | 'minus' | 'trash' | 'check' | 'x' | 'home' | 'box' | 'shirt' | 'list' | 'gear' | 'out' | 'up' | 'edit' | 'refresh' | 'pin' | 'truck' | 'card'
 
 const PATHS: Record<IconName, ReactNode> = {
   back: <path d="M15 5l-7 7 7 7" />,
@@ -84,6 +84,12 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z" />
       <circle cx="12" cy="9" r="2.5" />
+    </>
+  ),
+  card: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 10h18M7 15h4" />
     </>
   ),
   truck: (

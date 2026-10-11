@@ -134,26 +134,21 @@ export default function ProductDetail() {
         )}
 
         {settings && (
-          <section className="flex flex-col gap-2.5">
-            <h2 className="text-[15px] font-bold">Entrega</h2>
-            <div className="grid grid-cols-2 gap-2 text-[13px]">
-              <div className="flex flex-col gap-0.5 rounded-xl border border-line bg-panel p-3">
-                <span className="flex items-center gap-1.5 font-bold">
-                  <Icon name="pin" size={16} /> Pickup
-                </span>
-                <span className="text-soft">{settings.pickup_info || 'Retiras tú.'}</span>
-              </div>
-              <div className="flex flex-col gap-0.5 rounded-xl border border-line bg-panel p-3">
-                <span className="flex items-center gap-1.5 font-bold">
-                  <Icon name="truck" size={16} /> Delivery
-                </span>
-                <span className="text-soft">{settings.delivery_info || 'Te la llevamos.'}</span>
-              </div>
-            </div>
-            <p className="text-[13px] leading-relaxed text-soft">
-              Pagas con {settings.payment_methods.filter((m) => m.enabled).map((m) => m.name).join(', ')}.
-            </p>
-          </section>
+          // Solo información, sin cuadros: la entrega y el pago se eligen en el checkout
+          <ul className="flex flex-col gap-2.5 border-t border-line pt-5 text-[13px] leading-snug text-soft">
+            <li className="flex gap-2.5">
+              <Icon name="truck" size={18} className="mt-px shrink-0 text-white" />
+              <span>
+                <b className="font-semibold text-white">Pickup o delivery</b> · lo eliges al confirmar el pedido
+              </span>
+            </li>
+            <li className="flex gap-2.5">
+              <Icon name="card" size={18} className="mt-px shrink-0 text-white" />
+              <span>
+                <b className="font-semibold text-white">Pagas con</b> {settings.payment_methods.filter((m) => m.enabled).map((m) => m.name).join(', ')}
+              </span>
+            </li>
+          </ul>
         )}
       </main>
 
