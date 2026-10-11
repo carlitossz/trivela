@@ -27,8 +27,12 @@ create table if not exists public.settings (
   pickup_info text not null default '',
   delivery_info text not null default '',
   payment_methods jsonb not null default '[]'::jsonb,
+  reserve_hours int not null default 24 check (reserve_hours >= 0),  -- horas que un pedido sin pagar aparta el stock (0 = no se libera solo)
   updated_at timestamptz not null default now()
 );
+
+-- Para bases creadas antes de que existiera esta columna
+alter table public.settings add column if not exists reserve_hours int not null default 24 check (reserve_hours >= 0);
 
 insert into public.settings (id, payment_methods, pickup_info, delivery_info)
 values (1,
@@ -135,6 +139,47 @@ create policy "admin gestiona pedidos" on public.orders for all using (public.is
 drop policy if exists "admin gestiona items" on public.order_items;
 create policy "admin gestiona items" on public.order_items for all using (public.is_admin()) with check (public.is_admin());
 
+-- ---------- Liberar pedidos no pagados ----------
+-- Cancela los pedidos "pendiente" con más de reserve_hours horas y devuelve sus tallas al stock.
+-- La llaman la tienda al cargar, create_order y el panel; no hace falta programar nada aparte.
+create or replace function public.release_expired_orders()
+returns int
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_hours int;
+  v_count int := 0;
+  r record;
+begin
+  select reserve_hours into v_hours from public.settings where id = 1;
+  if v_hours is null or v_hours <= 0 then
+    return 0;
+  end if;
+
+  for r in
+    select id from public.orders
+    where status = 'pendiente' and created_at < now() - make_interval(hours => v_hours)
+    for update skip locked
+  loop
+    update public.variants v set stock = v.stock + i.qty
+    from public.order_items i
+    where i.order_id = r.id and i.variant_id = v.id;
+
+    update public.orders
+    set status = 'cancelado',
+        notes = trim(both ' ' from notes || ' Liberado automáticamente: no se confirmó el pago en ' || v_hours || ' h.')
+    where id = r.id;
+
+    v_count := v_count + 1;
+  end loop;
+
+  return v_count;
+end;
+$$;
+
+revoke all on function public.release_expired_orders() from public;
+grant execute on function public.release_expired_orders() to anon, authenticated;
+
 -- ---------- Crear pedido (lo usa el cliente) ----------
 -- Valida stock, lo descuenta (queda apartado) y guarda el pedido, todo en una sola transacción.
 create or replace function public.create_order(
@@ -174,6 +219,9 @@ begin
   if jsonb_array_length(p_items) > 30 then
     raise exception 'Demasiados productos en un pedido';
   end if;
+
+  -- Antes de revisar stock, se liberan los apartados vencidos
+  perform public.release_expired_orders();
 
   select pm ->> 'currency', s.bs_rate into v_currency, v_rate
   from public.settings s, jsonb_array_elements(s.payment_methods) pm

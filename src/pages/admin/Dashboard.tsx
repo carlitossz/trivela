@@ -3,10 +3,12 @@ import { Icon, JerseyImage, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
 import { bs, cop, orderTotal, timeAgo, totalStock, usd } from '../../lib/format'
 import { useAsync } from '../../lib/store'
+import { useOrderAlerts } from './orderAlerts'
 import { ErrorBox, PageTitle, StatusBadge } from './shared'
 
 export default function Dashboard() {
-  const { data, error, loading, reload } = useAsync(() => Promise.all([api.listProducts({ includeInactive: true }), api.listOrders()]))
+  const { tick, permission, enableNotifications } = useOrderAlerts()
+  const { data, error, loading, reload } = useAsync(() => Promise.all([api.listProducts({ includeInactive: true }), api.listOrders()]), [tick])
 
   if (loading && !data) return <div className="grid place-items-center py-20"><Spinner dark /></div>
   if (error || !data) return <ErrorBox message={error ?? 'No se pudo cargar'} onRetry={reload} />
@@ -45,9 +47,32 @@ export default function Dashboard() {
         }
       />
 
+      {permission !== 'granted' && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#BFE8CF] bg-[#EAF8EF] p-4 text-sm">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-wa text-ink">
+            <Icon name="bag" size={18} />
+          </span>
+          <div className="min-w-0 flex-1 basis-56">
+            <p className="font-bold">Aviso de pedidos nuevos</p>
+            <p className="text-[#3D5C48]">
+              {permission === 'denied'
+                ? 'Notificaciones bloqueadas en este navegador. Con el panel abierto igual suena y aparece el aviso.'
+                : permission === 'unsupported'
+                  ? 'Con el panel abierto, cada pedido nuevo suena y aparece arriba. En iPhone, instala la app en la pantalla de inicio para recibir notificaciones.'
+                  : 'Con el panel abierto, cada pedido nuevo suena y aparece arriba. Activa las notificaciones para enterarte aunque estés en otra pestaña.'}
+            </p>
+          </div>
+          {permission === 'default' && (
+            <button type="button" className="a-btn-dark" onClick={() => void enableNotifications()}>
+              Activar notificaciones
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Franelas en stock" value={String(stock)} note={`${active.length} modelos activos`} />
-        <Kpi label="Por confirmar" value={String(pending.length)} note={`${pending.reduce((a, o) => a + o.items.reduce((b, i) => b + i.qty, 0), 0)} franelas apartadas`} />
+        <Kpi label="Por confirmar" value={String(pending.length)} note={reservedNote(pending.reduce((a, o) => a + o.items.reduce((b, i) => b + i.qty, 0), 0))} />
         <Kpi label="Vendidas este mes" value={String(units)} note={`${sold.length} pedidos pagados`} />
         <Kpi label="Última unidad" value={`${lastUnits.length} tallas`} note="Revisa si reponer" dark />
       </div>
@@ -118,6 +143,8 @@ export default function Dashboard() {
     </>
   )
 }
+
+const reservedNote = (n: number) => (n === 1 ? '1 franela apartada' : `${n} franelas apartadas`)
 
 function Kpi({ label, value, note, dark = false }: { label: string; value: string; note: string; dark?: boolean }) {
   return (

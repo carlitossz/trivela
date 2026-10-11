@@ -37,6 +37,19 @@ export function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
 }
 
+export const hoursText = (h: number) => (h === 1 ? '1 hora' : `${h} horas`)
+
+/** Cuánto falta para que un pedido sin pagar se libere solo, en texto corto */
+export function timeLeft(createdAt: string, hours: number) {
+  if (!hours) return null
+  const ms = new Date(createdAt).getTime() + hours * 3600_000 - Date.now()
+  if (ms <= 0) return 'se libera en cualquier momento'
+  const h = Math.floor(ms / 3600_000)
+  const m = Math.floor((ms % 3600_000) / 60_000)
+  if (h >= 1) return `se libera en ${h} h${m ? ` ${m} min` : ''}`
+  return `se libera en ${Math.max(1, m)} min`
+}
+
 /** Solo dígitos, para wa.me */
 export const digits = (s: string) => s.replace(/\D/g, '')
 

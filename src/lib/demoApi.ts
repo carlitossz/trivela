@@ -50,6 +50,7 @@ function seed(): DemoDb {
       store_name: 'Trivela',
       whatsapp: '',
       bs_rate: null,
+      reserve_hours: 24,
       pickup_info: 'Coordinamos el punto de entrega por WhatsApp.',
       delivery_info: 'El costo depende de la zona; te lo confirmamos por WhatsApp.',
       payment_methods: [
@@ -72,14 +73,46 @@ let memory: DemoDb | null = null
 let memorySession = false
 
 function load(): DemoDb {
+  let db: DemoDb | null = null
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw) as DemoDb
+    if (raw) db = JSON.parse(raw) as DemoDb
   } catch {
     /* sin almacenamiento */
   }
-  if (!memory) memory = seed()
-  return memory
+  if (!db) {
+    if (!memory) memory = seed()
+    db = memory
+  }
+  // Datos de prueba guardados antes de que existieran las horas de apartado
+  if (db.settings.reserve_hours == null) db.settings.reserve_hours = 24
+  return db
+}
+
+/** Igual que release_expired_orders() en la base de datos */
+function releaseExpired(db: DemoDb) {
+  const hours = db.settings.reserve_hours
+  if (!hours) return 0
+  const limit = Date.now() - hours * 3600_000
+  let count = 0
+  for (const o of db.orders) {
+    if (o.status !== 'pendiente' || new Date(o.created_at).getTime() >= limit) continue
+    for (const it of o.items) {
+      const v = db.products.flatMap((p) => p.variants).find((x) => x.id === it.variant_id)
+      if (v) v.stock += it.qty
+    }
+    o.status = 'cancelado'
+    o.notes = `${o.notes} Liberado automáticamente: no se confirmó el pago en ${hours} h.`.trim()
+    count += 1
+  }
+  if (count) save(db)
+  return count
+}
+
+function loadFresh() {
+  const db = load()
+  releaseExpired(db)
+  return db
 }
 
 function save(db: DemoDb) {
@@ -101,14 +134,14 @@ export function createDemoApi(): Api {
     getSettings: () => wait(load().settings),
 
     listProducts: (opts) => {
-      const all = load().products
+      const all = loadFresh().products
       return wait(opts?.includeInactive ? all : all.filter((p) => p.active))
     },
 
-    getProduct: (id) => wait(load().products.find((p) => p.id === id) ?? null),
+    getProduct: (id) => wait(loadFresh().products.find((p) => p.id === id) ?? null),
 
     async createOrder(o) {
-      const db = load()
+      const db = loadFresh()
       if (!o.customer_name.trim() || !o.customer_phone.trim()) throw new Error('Escribe tu nombre y tu WhatsApp')
       if (o.delivery === 'delivery' && !o.address.trim()) throw new Error('Escribe la dirección de entrega')
       if (!o.items.length) throw new Error('El carrito está vacío')
@@ -184,7 +217,14 @@ export function createDemoApi(): Api {
       }
     },
 
-    listOrders: () => wait(load().orders),
+    listOrders: () => wait(loadFresh().orders),
+
+    pendingOrders: () =>
+      wait(
+        loadFresh()
+          .orders.filter((o) => o.status === 'pendiente')
+          .map(({ id, code, customer_name, currency, total_usd, total_cop, total_bs, created_at }) => ({ id, code, customer_name, currency, total_usd, total_cop, total_bs, created_at }))
+      ),
 
     async setOrderStatus(orderId, status) {
       const db = load()

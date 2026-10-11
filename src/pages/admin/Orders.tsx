@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Icon, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
-import { errorMessage, orderTotal, STATUS_LABEL, timeAgo } from '../../lib/format'
+import { errorMessage, orderTotal, STATUS_LABEL, timeAgo, timeLeft } from '../../lib/format'
 import { useAsync, useSettings } from '../../lib/store'
 import type { Order, OrderStatus } from '../../lib/types'
 import { waLink } from '../../lib/whatsapp'
+import { useOrderAlerts } from './orderAlerts'
 import { ErrorBox, PageTitle, StatusBadge, Toast, useConfirm } from './shared'
 
 const TABS: (OrderStatus | 'todos')[] = ['pendiente', 'pagado', 'entregado', 'cancelado', 'todos']
 
 export default function Orders() {
-  const { data: orders, error, loading, reload, setData } = useAsync(() => api.listOrders())
+  // Se recarga sola cuando el aviso detecta un pedido nuevo
+  const { tick } = useOrderAlerts()
+  const { data: orders, error, loading, reload, setData } = useAsync(() => api.listOrders(), [tick])
   const { settings } = useSettings()
   const { confirm, dialog } = useConfirm()
   const [tab, setTab] = useState<OrderStatus | 'todos'>('pendiente')
@@ -18,9 +21,9 @@ export default function Orders() {
   const [busy, setBusy] = useState('')
   const [toast, setToast] = useState('')
 
-  // Revisa pedidos nuevos cada 30 segundos
+  // Los pedidos nuevos llegan por el aviso; esto refresca estados cada minuto (por ejemplo, pedidos liberados solos)
   useEffect(() => {
-    const t = setInterval(reload, 30000)
+    const t = setInterval(reload, 60000)
     return () => clearInterval(t)
   }, [reload])
 
@@ -129,6 +132,13 @@ export default function Orders() {
                 <b>{orderTotal(o)}</b> · {o.payment_method}
               </dd>
             </dl>
+
+            {o.status === 'pendiente' && settings && timeLeft(o.created_at, settings.reserve_hours) && (
+              <p className="rounded-lg bg-[#FFF8E1] px-3 py-2 text-xs font-semibold text-[#5C4100]">
+                Si no se confirma el pago, {timeLeft(o.created_at, settings.reserve_hours)} y las tallas vuelven a la tienda.
+              </p>
+            )}
+            {o.notes && <p className="rounded-lg bg-[#F7F7F5] px-3 py-2 text-xs text-[#5C5C5C]">{o.notes}</p>}
 
             <div className="flex flex-wrap gap-2">
               {o.status === 'pendiente' && (

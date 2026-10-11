@@ -14,8 +14,9 @@ const AdminApp = lazy(() => import('./pages/admin/AdminApp'))
 function ScrollTop() {
   const { pathname } = useLocation()
   useEffect(() => {
-  window.scrollTo(0, 0)
-}, [pathname])
+    // Entre llaves: algunas extensiones del navegador hacen que scrollTo devuelva algo y React lo confunde
+    window.scrollTo(0, 0)
+  }, [pathname])
   return null
 }
 

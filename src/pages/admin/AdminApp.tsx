@@ -5,6 +5,7 @@ import { api } from '../../lib/api'
 import { DEMO_PASSWORD } from '../../lib/demoApi'
 import { errorMessage } from '../../lib/format'
 import Dashboard from './Dashboard'
+import { OrderAlertsProvider, useOrderAlerts } from './orderAlerts'
 import Inventory from './Inventory'
 import Orders from './Orders'
 import ProductForm from './ProductForm'
@@ -41,6 +42,20 @@ export default function AdminApp() {
   }
 
   return (
+    <OrderAlertsProvider>
+      <AdminShell email={email} onLogout={logout} />
+    </OrderAlertsProvider>
+  )
+}
+
+function AdminShell({ email, onLogout }: { email: string; onLogout: () => void }) {
+  const { pending } = useOrderAlerts()
+  const badge = (to: string) =>
+    to === '/admin/pedidos' && pending.length > 0 ? (
+      <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-wa px-1.5 text-[11px] font-bold text-ink">{pending.length}</span>
+    ) : null
+
+  return (
     <div className="min-h-screen bg-paper text-ink">
       <DemoBanner light />
       <div className="md:flex">
@@ -62,6 +77,7 @@ export default function AdminApp() {
               >
                 <Icon name={n.icon} size={18} />
                 {n.label}
+                {badge(n.to)}
               </NavLink>
             ))}
           </nav>
@@ -70,7 +86,7 @@ export default function AdminApp() {
               Ver la tienda
             </a>
             <span className="truncate text-muted">{email}</span>
-            <button type="button" onClick={logout} className="flex h-9 items-center gap-2 font-semibold text-soft hover:text-white">
+            <button type="button" onClick={onLogout} className="flex h-9 items-center gap-2 font-semibold text-soft hover:text-white">
               <Icon name="out" size={16} /> Cerrar sesión
             </button>
           </div>
@@ -83,7 +99,7 @@ export default function AdminApp() {
             <a href={import.meta.env.BASE_URL} target="_blank" rel="noreferrer" className="rounded-lg border border-line2 px-2.5 py-1.5 text-xs font-semibold">
               Ver tienda
             </a>
-            <button type="button" onClick={logout} aria-label="Cerrar sesión" className="grid h-9 w-9 place-items-center rounded-lg border border-line2">
+            <button type="button" onClick={onLogout} aria-label="Cerrar sesión" className="grid h-9 w-9 place-items-center rounded-lg border border-line2">
               <Icon name="out" size={16} />
             </button>
           </div>
@@ -114,7 +130,12 @@ export default function AdminApp() {
             end={n.end}
             className={({ isActive }) => `flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold ${isActive ? 'text-ink' : 'text-[#8C8C8C]'}`}
           >
-            <Icon name={n.icon} size={21} />
+            <span className="relative">
+              <Icon name={n.icon} size={21} />
+              {n.to === '/admin/pedidos' && pending.length > 0 && (
+                <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-wa px-1 text-[10px] font-bold text-ink">{pending.length}</span>
+              )}
+            </span>
             {n.label}
           </NavLink>
         ))}

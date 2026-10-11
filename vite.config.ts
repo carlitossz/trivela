@@ -2,6 +2,15 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Dirección pública del sitio, para que WhatsApp e Instagram encuentren la imagen de vista previa.
+// En Vercel sale sola de VERCEL_PROJECT_PRODUCTION_URL; con dominio propio se puede fijar con VITE_SITE_URL.
+function siteUrl() {
+  const fixed = process.env.VITE_SITE_URL
+  if (fixed) return fixed.replace(/\/+$/, '')
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
+  return vercel ? `https://${vercel}` : ''
+}
+
 // `npm run build:demo` genera una versión de prueba sin base de datos (datos guardados en el navegador)
 export default defineConfig(({ mode }) => ({
   base: mode === 'demo' ? './' : '/',
@@ -9,6 +18,10 @@ export default defineConfig(({ mode }) => ({
   build: mode === 'demo' ? { rollupOptions: { output: { inlineDynamicImports: true } } } : {},
   plugins: [
     react(),
+    {
+      name: 'site-url',
+      transformIndexHtml: (html: string) => html.replaceAll('%SITE_URL%', mode === 'demo' ? '.' : siteUrl())
+    },
     VitePWA({
       disable: mode === 'demo',
       registerType: 'autoUpdate',

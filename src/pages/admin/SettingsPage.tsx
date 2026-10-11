@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Icon, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
 import { resetDemo } from '../../lib/demoApi'
-import { digits, errorMessage } from '../../lib/format'
+import { digits, errorMessage, hoursText } from '../../lib/format'
 import { useSettings } from '../../lib/store'
 import type { Currency, Settings } from '../../lib/types'
 import { ErrorBox, PageTitle, Toast, useConfirm } from './shared'
@@ -90,7 +90,7 @@ export default function SettingsPage() {
         </section>
 
         <section className="a-card flex flex-col gap-3 p-4">
-          <h2 className="font-bold">Entrega</h2>
+          <h2 className="font-bold">Entrega y apartado</h2>
           <label className="a-label">
             Pickup: dónde y cuándo se retira
             <textarea className="a-field h-20 py-2" value={form.pickup_info} onChange={(e) => set('pickup_info', e.target.value)} />
@@ -98,6 +98,23 @@ export default function SettingsPage() {
           <label className="a-label">
             Delivery: zonas y costo
             <textarea className="a-field h-20 py-2" value={form.delivery_info} onChange={(e) => set('delivery_info', e.target.value)} />
+          </label>
+          <label className="a-label">
+            Horas que se apartan las franelas
+            <input
+              className="a-field"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              step="1"
+              value={form.reserve_hours}
+              onChange={(e) => set('reserve_hours', Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+            />
+            <span className="font-normal text-[#5C5C5C]">
+              {form.reserve_hours > 0
+                ? `Si un pedido sigue "Por confirmar" después de ${hoursText(form.reserve_hours)}, se cancela solo y sus tallas vuelven a la tienda.`
+                : 'Con 0, los pedidos sin pagar quedan apartados hasta que los canceles a mano.'}
+            </span>
           </label>
         </section>
 

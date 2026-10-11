@@ -39,6 +39,8 @@ export interface Settings {
   pickup_info: string
   delivery_info: string
   payment_methods: PaymentMethod[]
+  /** Horas que un pedido sin pagar mantiene apartadas sus tallas. 0 = no se libera solo */
+  reserve_hours: number
 }
 
 export type OrderStatus = 'pendiente' | 'pagado' | 'entregado' | 'cancelado'
@@ -72,6 +74,8 @@ export interface Order {
   created_at: string
   items: OrderItem[]
 }
+
+export type PendingOrder = Pick<Order, 'id' | 'code' | 'customer_name' | 'currency' | 'total_usd' | 'total_cop' | 'total_bs' | 'created_at'>
 
 export interface NewOrder {
   customer_name: string
@@ -117,6 +121,8 @@ export interface Api {
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
   listOrders(): Promise<Order[]>
+  /** Pedidos por confirmar, sin detalle: lo usa el aviso de pedidos nuevos */
+  pendingOrders(): Promise<PendingOrder[]>
   setOrderStatus(orderId: string, status: OrderStatus): Promise<void>
   setStock(variantId: string, stock: number): Promise<void>
   saveProduct(input: ProductInput): Promise<string>

@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ShopShell } from '../../components/ShopLayout'
 import { BackButton, Icon, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
-import { errorMessage, money } from '../../lib/format'
+import { errorMessage, hoursText, money } from '../../lib/format'
 import { useCart, useSettings } from '../../lib/store'
 import type { Delivery } from '../../lib/types'
 import { orderMessage } from '../../lib/whatsapp'
@@ -32,6 +32,11 @@ export default function Checkout() {
   const [method, setMethod] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+
+  // El aviso de error se quita apenas el cliente corrige algo
+  useEffect(() => {
+    setError('')
+  }, [name, phone, delivery, address, method])
 
   if (cart.items.length === 0 && !sending) return <Navigate to="/carrito" replace />
 
@@ -67,7 +72,7 @@ export default function Checkout() {
         address: address.trim(),
         paymentMethod: selected.name
       })
-      const done = { code: result.code, message, total: money(result.currency, { usd: result.total_usd, cop: result.total_cop, bs: result.total_bs }), paymentDetails: selected.details }
+      const done = { code: result.code, message, total: money(result.currency, { usd: result.total_usd, cop: result.total_cop, bs: result.total_bs }), paymentDetails: selected.details, reserveHours: settings?.reserve_hours ?? 0 }
       try {
         localStorage.setItem(CUSTOMER_KEY, JSON.stringify({ name: name.trim(), phone: phone.trim(), address: address.trim() }))
         sessionStorage.setItem(LAST_ORDER_KEY, JSON.stringify(done))
@@ -184,6 +189,9 @@ export default function Checkout() {
               {sending ? <Spinner /> : <Icon name="check" />}
               {sending ? 'Apartando tus franelas…' : 'Confirmar pedido'}
             </button>
+            {!!settings?.reserve_hours && (
+              <p className="text-center text-[11px] text-muted">Te apartamos las franelas por {hoursText(settings.reserve_hours)} mientras confirmas el pago.</p>
+            )}
           </div>
         </div>
       </form>
