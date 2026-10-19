@@ -24,7 +24,7 @@ function Ball(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-type IconName = 'back' | 'bag' | 'search' | 'wa' | 'plus' | 'minus' | 'trash' | 'check' | 'x' | 'home' | 'box' | 'shirt' | 'list' | 'gear' | 'out' | 'up' | 'edit' | 'refresh' | 'pin' | 'truck' | 'card'
+type IconName = 'back' | 'bag' | 'search' | 'wa' | 'plus' | 'minus' | 'trash' | 'check' | 'x' | 'home' | 'box' | 'shirt' | 'list' | 'gear' | 'out' | 'up' | 'edit' | 'refresh' | 'pin' | 'truck' | 'card' | 'chevron'
 
 const PATHS: Record<IconName, ReactNode> = {
   back: <path d="M15 5l-7 7 7 7" />,
@@ -98,7 +98,8 @@ const PATHS: Record<IconName, ReactNode> = {
       <circle cx="7" cy="18" r="1.8" />
       <circle cx="17" cy="18" r="1.8" />
     </>
-  )
+  ),
+  chevron: <path d="M6 9l6 6 6-6" />
 }
 
 export function Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {

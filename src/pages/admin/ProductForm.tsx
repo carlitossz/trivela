@@ -136,45 +136,54 @@ export default function ProductForm() {
             </label>
             <label className="a-label">
               Tipo
-              <select className="a-field" value={form.kit} onChange={(e) => set('kit', e.target.value)}>
-                {KITS.map((k) => (
-                  <option key={k} value={k}>{k}</option>
-                ))}
-              </select>
+              <span className="relative">
+                <select className="a-select" value={form.kit} onChange={(e) => set('kit', e.target.value)}>
+                  {KITS.map((k) => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+                <Icon name="chevron" size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8C8C8C]" />
+              </span>
             </label>
             <label className="a-label">
               Categoría
-              <select className="a-field" value={form.category} onChange={(e) => set('category', e.target.value)}>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              <span className="relative">
+                <select className="a-select" value={form.category} onChange={(e) => set('category', e.target.value)}>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <Icon name="chevron" size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8C8C8C]" />
+              </span>
             </label>
             <label className="a-label">
               Colección
-              <select
-                className="a-field"
-                value={customCollection ? '__otra__' : form.collection}
-                onChange={(e) => {
-                  const v = e.target.value
-                  if (v === '__otra__') {
-                    setCustomCollection(true)
-                    set('collection', '')
-                  } else {
-                    setCustomCollection(false)
-                    set('collection', v)
-                  }
-                }}
-              >
-                <option value="" disabled>Elige una colección</option>
-                {COLLECTIONS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-                <option value="__otra__">Otra (escribir)…</option>
-              </select>
+              <span className="relative">
+                <select
+                  className="a-select"
+                  value={customCollection ? '__otra__' : form.collection}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v === '__otra__') {
+                      setCustomCollection(true)
+                      set('collection', '')
+                    } else {
+                      setCustomCollection(false)
+                      set('collection', v)
+                    }
+                  }}
+                >
+                  <option value="" disabled>Elige una colección</option>
+                  {COLLECTIONS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                  <option value="__otra__">Otra (escribir)…</option>
+                </select>
+                <Icon name="chevron" size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8C8C8C]" />
+              </span>
               {customCollection && (
                 <input
-                  className="a-field mt-2"
+                  className="a-field border-l-[3px] border-l-ink"
                   value={form.collection}
                   onChange={(e) => set('collection', e.target.value)}
                   placeholder="Escribe la colección"
@@ -184,11 +193,14 @@ export default function ProductForm() {
             </label>
             <label className="a-label">
               Etiqueta
-              <select className="a-field" value={form.badge} onChange={(e) => set('badge', e.target.value)}>
-                {BADGES.map((b) => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
+              <span className="relative">
+                <select className="a-select" value={form.badge} onChange={(e) => set('badge', e.target.value)}>
+                  {BADGES.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+                <Icon name="chevron" size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8C8C8C]" />
+              </span>
             </label>
             <label className="a-label">
               Precio en dólares
