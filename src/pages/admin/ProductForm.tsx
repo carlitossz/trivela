@@ -3,14 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Icon, JerseyImage, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
 import { errorMessage } from '../../lib/format'
-import { SIZES, type ProductInput } from '../../lib/types'
+import { BADGES, CATEGORIES, COLLECTIONS, KITS, SIZES, type ProductInput } from '../../lib/types'
 import { ErrorBox, PageTitle, useConfirm } from './shared'
 
 const EMPTY: ProductInput = {
   name: '',
   category: 'Selección',
   kit: 'Local',
-  collection: 'Mundial 2026',
+  collection: '',
   badge: 'Bordada',
   description: '',
   price_usd: 25,
@@ -24,6 +24,8 @@ export default function ProductForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [form, setForm] = useState<ProductInput | null>(id ? null : EMPTY)
+  // "Colección" tiene opciones fijas + un espacio libre para una que no esté en la lista
+  const [customCollection, setCustomCollection] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -51,6 +53,7 @@ export default function ProductForm() {
           active: p.active,
           stock: Object.fromEntries(SIZES.map((s) => [s, p.variants.find((v) => v.size === s)?.stock ?? 0]))
         })
+        setCustomCollection(p.collection !== '' && !(COLLECTIONS as readonly string[]).includes(p.collection))
       })
       .catch((e) => setLoadError(errorMessage(e)))
   }, [id])
@@ -133,29 +136,59 @@ export default function ProductForm() {
             </label>
             <label className="a-label">
               Tipo
-              <input className="a-field" list="kits" value={form.kit} onChange={(e) => set('kit', e.target.value)} />
-              <datalist id="kits">
-                <option value="Local" />
-                <option value="Visitante" />
-                <option value="Alternativa" />
-                <option value="Retro" />
-              </datalist>
+              <select className="a-field" value={form.kit} onChange={(e) => set('kit', e.target.value)}>
+                {KITS.map((k) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
             </label>
             <label className="a-label">
               Categoría
-              <input className="a-field" list="cats" value={form.category} onChange={(e) => set('category', e.target.value)} />
-              <datalist id="cats">
-                <option value="Selección" />
-                <option value="Club" />
-              </datalist>
+              <select className="a-field" value={form.category} onChange={(e) => set('category', e.target.value)}>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </label>
             <label className="a-label">
               Colección
-              <input className="a-field" value={form.collection} onChange={(e) => set('collection', e.target.value)} placeholder="Ej. Mundial 2026" />
+              <select
+                className="a-field"
+                value={customCollection ? '__otra__' : form.collection}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (v === '__otra__') {
+                    setCustomCollection(true)
+                    set('collection', '')
+                  } else {
+                    setCustomCollection(false)
+                    set('collection', v)
+                  }
+                }}
+              >
+                <option value="" disabled>Elige una colección</option>
+                {COLLECTIONS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                <option value="__otra__">Otra (escribir)…</option>
+              </select>
+              {customCollection && (
+                <input
+                  className="a-field mt-2"
+                  value={form.collection}
+                  onChange={(e) => set('collection', e.target.value)}
+                  placeholder="Escribe la colección"
+                  autoFocus
+                />
+              )}
             </label>
             <label className="a-label">
               Etiqueta
-              <input className="a-field" value={form.badge} onChange={(e) => set('badge', e.target.value)} placeholder="Ej. Bordada" />
+              <select className="a-field" value={form.badge} onChange={(e) => set('badge', e.target.value)}>
+                {BADGES.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
             </label>
             <label className="a-label">
               Precio en dólares

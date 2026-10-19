@@ -1,5 +1,11 @@
 export const SIZES = ['S', 'M', 'L', 'XL', '2XL'] as const
 
+/** Opciones fijas para la ficha de la franela (panel admin) */
+export const KITS = ['Local', 'Visitante', 'Alternativa', 'Cuarta Equipación', 'Especial / Conmemorativa', 'Equipación Portero', 'Entrenamiento'] as const
+export const CATEGORIES = ['Club', 'Selección'] as const
+export const COLLECTIONS = ['Champions League', 'Europa League', 'Conference League', 'Copa Libertadores', 'Copa Sudamericana', 'Liga', 'Mundial'] as const
+export const BADGES = ['Bordada', 'Termosellada', 'Parche de goma / silicona'] as const
+
 export type Currency = 'USD' | 'COP' | 'BS'
 
 export interface Variant {
