@@ -18,6 +18,21 @@ export function money(currency: Currency, totals: { usd: number; cop: number; bs
 export const orderTotal = (o: Pick<Order, 'currency' | 'total_usd' | 'total_cop' | 'total_bs'>) =>
   money(o.currency, { usd: o.total_usd, cop: o.total_cop, bs: o.total_bs })
 
+const fmtFor: Record<Currency, (n: number) => string> = { USD: usd, COP: cop, BS: bs }
+
+/** Lo que el cliente dijo que trae en efectivo, en la moneda del pedido (o null si no aplica) */
+export function cashAmountText(o: Pick<Order, 'currency' | 'cash_amount'>) {
+  return o.cash_amount == null ? null : fmtFor[o.currency](o.cash_amount)
+}
+
+/** Vuelto que hay que devolver, o null si paga exacto / no dio el monto */
+export function changeDueText(o: Pick<Order, 'currency' | 'total_usd' | 'total_cop' | 'total_bs' | 'cash_amount'>) {
+  if (o.cash_amount == null) return null
+  const total = o.currency === 'COP' ? o.total_cop : o.currency === 'BS' ? (o.total_bs ?? o.total_usd) : o.total_usd
+  const diff = Math.round((o.cash_amount - total) * 100) / 100
+  return diff > 0 ? fmtFor[o.currency](diff) : null
+}
+
 export const totalStock = (p: Product) => p.variants.reduce((a, v) => a + v.stock, 0)
 export const sizesInStock = (p: Product) => p.variants.filter((v) => v.stock > 0).map((v) => v.size)
 

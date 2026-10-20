@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Icon, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
-import { errorMessage, orderTotal, STATUS_LABEL, timeAgo, timeLeft } from '../../lib/format'
+import { cashAmountText, changeDueText, errorMessage, orderTotal, STATUS_LABEL, timeAgo, timeLeft } from '../../lib/format'
 import { useAsync, useSettings } from '../../lib/store'
 import type { Order, OrderStatus } from '../../lib/types'
 import { waLink } from '../../lib/whatsapp'
@@ -131,7 +131,17 @@ export default function Orders() {
               <dd>
                 <b>{orderTotal(o)}</b> · {o.payment_method}
               </dd>
+              {cashAmountText(o) && (
+                <>
+                  <dt className="text-[#5C5C5C]">Paga con</dt>
+                  <dd>{cashAmountText(o)}</dd>
+                </>
+              )}
             </dl>
+
+            {changeDueText(o) && (
+              <p className="rounded-lg bg-[#FFF1C2] px-3 py-2 text-xs font-bold text-[#5C4100]">Prepara {changeDueText(o)} de vuelto.</p>
+            )}
 
             {o.status === 'pendiente' && settings && timeLeft(o.created_at, settings.reserve_hours) && (
               <p className="rounded-lg bg-[#FFF8E1] px-3 py-2 text-xs font-semibold text-[#5C4100]">

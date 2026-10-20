@@ -54,12 +54,12 @@ function seed(): DemoDb {
       pickup_info: 'Coordinamos el punto de entrega por WhatsApp.',
       delivery_info: 'El costo depende de la zona; te lo confirmamos por WhatsApp.',
       payment_methods: [
-        { name: 'Efectivo $', currency: 'USD', details: 'Pagas en dólares al recibir.', enabled: true },
-        { name: 'Efectivo pesos', currency: 'COP', details: 'Pagas en pesos al recibir.', enabled: true },
-        { name: 'Bolívares', currency: 'BS', details: 'Pago Móvil o transferencia a la tasa del día.', enabled: true },
-        { name: 'Binance', currency: 'USD', details: 'Te enviamos el ID de Binance Pay por WhatsApp.', enabled: true },
-        { name: 'Bancolombia', currency: 'COP', details: 'Te enviamos los datos de la cuenta por WhatsApp.', enabled: true },
-        { name: 'Zinli', currency: 'USD', details: 'Te enviamos el correo de Zinli por WhatsApp.', enabled: true }
+        { name: 'Efectivo $', currency: 'USD', details: 'Pagas en dólares al recibir.', enabled: true, cash: true },
+        { name: 'Efectivo pesos', currency: 'COP', details: 'Pagas en pesos al recibir.', enabled: true, cash: true },
+        { name: 'Bolívares', currency: 'BS', details: 'Pago Móvil o transferencia a la tasa del día.', enabled: true, cash: false },
+        { name: 'Binance', currency: 'USD', details: 'Te enviamos el ID de Binance Pay por WhatsApp.', enabled: true, cash: false },
+        { name: 'Bancolombia', currency: 'COP', details: 'Te enviamos los datos de la cuenta por WhatsApp.', enabled: true, cash: false },
+        { name: 'Zinli', currency: 'USD', details: 'Te enviamos el correo de Zinli por WhatsApp.', enabled: true, cash: false }
       ]
     },
     products,
@@ -147,6 +147,7 @@ export function createDemoApi(): Api {
       if (!o.items.length) throw new Error('El carrito está vacío')
       const pm = db.settings.payment_methods.find((m) => m.name === o.payment_method && m.enabled)
       if (!pm) throw new Error('Ese método de pago no está disponible')
+      if (o.cash_amount != null && !pm.cash) throw new Error('Ese método de pago no es en efectivo')
 
       const items: Order['items'] = []
       let tUsd = 0
@@ -168,6 +169,8 @@ export function createDemoApi(): Api {
       const code = `TV-${String(db.nextCode).padStart(4, '0')}`
       db.nextCode += 1
       const tBs = db.settings.bs_rate != null ? Math.round(tUsd * db.settings.bs_rate * 100) / 100 : null
+      const total = pm.currency === 'COP' ? tCop : pm.currency === 'BS' ? (tBs ?? tUsd) : tUsd
+      if (o.cash_amount != null && o.cash_amount < total) throw new Error('Ese monto no alcanza para pagar el total')
       db.orders.unshift({
         id: uid(),
         code,
@@ -180,6 +183,7 @@ export function createDemoApi(): Api {
         total_usd: tUsd,
         total_cop: tCop,
         total_bs: tBs,
+        cash_amount: o.cash_amount,
         status: 'pendiente',
         notes: '',
         created_at: new Date().toISOString(),

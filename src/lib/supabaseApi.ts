@@ -72,7 +72,8 @@ export function createSupabaseApi(url: string, key: string): Api {
         p_delivery: o.delivery,
         p_address: o.address,
         p_payment_method: o.payment_method,
-        p_items: o.items
+        p_items: o.items,
+        p_cash_amount: o.cash_amount
       })
       fail(error)
       return {
@@ -118,7 +119,8 @@ export function createSupabaseApi(url: string, key: string): Api {
         ...o,
         total_usd: Number(o.total_usd),
         total_cop: Number(o.total_cop),
-        total_bs: o.total_bs == null ? null : Number(o.total_bs)
+        total_bs: o.total_bs == null ? null : Number(o.total_bs),
+        cash_amount: o.cash_amount == null ? null : Number(o.cash_amount)
       }))
     },
 

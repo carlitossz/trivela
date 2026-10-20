@@ -124,39 +124,54 @@ export default function SettingsPage() {
             <button
               type="button"
               className="a-btn h-9"
-              onClick={() => set('payment_methods', [...form.payment_methods, { name: '', currency: 'USD', details: '', enabled: true }])}
+              onClick={() => set('payment_methods', [...form.payment_methods, { name: '', currency: 'USD', details: '', enabled: true, cash: false }])}
             >
               <Icon name="plus" size={16} /> Agregar
             </button>
           </div>
-          <div className="flex flex-col divide-y divide-[#EEEEEA]">
+          <div className="flex flex-col gap-3">
             {form.payment_methods.map((m, i) => (
-              <div key={i} className="grid gap-2 py-3 sm:grid-cols-[auto_1fr_140px_2fr_auto] sm:items-center">
-                <label className="flex items-center gap-2 text-sm font-semibold">
-                  <input type="checkbox" className="h-5 w-5 accent-ink" checked={m.enabled} onChange={(e) => setMethod(i, { enabled: e.target.checked })} />
-                  <span className="sm:sr-only">Activo</span>
+              <div key={i} className="flex flex-col gap-2 rounded-xl border border-[#EEEEEA] p-3">
+                <div className="grid gap-2 sm:grid-cols-[auto_1fr_140px_auto] sm:items-center">
+                  <label className="flex items-center gap-2 text-sm font-semibold">
+                    <input type="checkbox" className="h-5 w-5 accent-ink" checked={m.enabled} onChange={(e) => setMethod(i, { enabled: e.target.checked })} />
+                    <span className="sm:sr-only">Activo</span>
+                  </label>
+                  <input className="a-field" aria-label="Nombre del método" value={m.name} onChange={(e) => setMethod(i, { name: e.target.value })} placeholder="Nombre" />
+                  <span className="relative">
+                    <select className="a-select" aria-label="Moneda" value={m.currency} onChange={(e) => setMethod(i, { currency: e.target.value as Currency })}>
+                      {(Object.keys(CURRENCY_LABEL) as Currency[]).map((c) => (
+                        <option key={c} value={c}>
+                          {CURRENCY_LABEL[c]}
+                        </option>
+                      ))}
+                    </select>
+                    <Icon name="chevron" size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8C8C8C]" />
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Quitar ${m.name || 'método'}`}
+                    className="grid h-11 w-11 place-items-center rounded-xl border border-[#D6D6D2] text-[#7A2318]"
+                    onClick={() => set('payment_methods', form.payment_methods.filter((_, j) => j !== i))}
+                  >
+                    <Icon name="trash" size={16} />
+                  </button>
+                </div>
+                <textarea
+                  className="a-field h-16 py-2"
+                  aria-label="Instrucciones y datos para el cliente"
+                  value={m.details}
+                  onChange={(e) => setMethod(i, { details: e.target.value })}
+                  placeholder="Lo que ve el cliente al elegirlo: puedes poner aquí directo el número de cuenta, el banco, el titular, el ID de Binance, etc."
+                />
+                <label className="flex items-center gap-2 text-xs font-semibold text-[#444]">
+                  <input type="checkbox" className="h-4 w-4 accent-ink" checked={m.cash} onChange={(e) => setMethod(i, { cash: e.target.checked })} />
+                  Es efectivo en mano (el cliente puede decir con cuánto paga, para que sepas qué vuelto darle)
                 </label>
-                <input className="a-field" aria-label="Nombre del método" value={m.name} onChange={(e) => setMethod(i, { name: e.target.value })} placeholder="Nombre" />
-                <select className="a-field" aria-label="Moneda" value={m.currency} onChange={(e) => setMethod(i, { currency: e.target.value as Currency })}>
-                  {(Object.keys(CURRENCY_LABEL) as Currency[]).map((c) => (
-                    <option key={c} value={c}>
-                      {CURRENCY_LABEL[c]}
-                    </option>
-                  ))}
-                </select>
-                <input className="a-field" aria-label="Instrucciones para el cliente" value={m.details} onChange={(e) => setMethod(i, { details: e.target.value })} placeholder="Lo que ve el cliente al elegirlo" />
-                <button
-                  type="button"
-                  aria-label={`Quitar ${m.name || 'método'}`}
-                  className="grid h-11 w-11 place-items-center rounded-xl border border-[#D6D6D2] text-[#7A2318]"
-                  onClick={() => set('payment_methods', form.payment_methods.filter((_, j) => j !== i))}
-                >
-                  <Icon name="trash" size={16} />
-                </button>
               </div>
             ))}
           </div>
-          <p className="text-xs text-[#5C5C5C]">La moneda define en qué se le muestra el total al cliente: dólares, pesos, o bolívares con la tasa del día.</p>
+          <p className="text-xs text-[#5C5C5C]">La moneda define en qué se le muestra el total al cliente: dólares, pesos, o bolívares con la tasa del día. Lo que escribas en "Instrucciones" ya se le muestra al cliente de una vez, sin que tengas que pasárselo tú por WhatsApp.</p>
         </section>
       </div>
 

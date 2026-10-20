@@ -36,6 +36,8 @@ export interface PaymentMethod {
   currency: Currency
   details: string
   enabled: boolean
+  /** Es pago en efectivo en mano: el cliente puede decir con qué billete paga para que le preparen el vuelto */
+  cash: boolean
 }
 
 export interface Settings {
@@ -75,6 +77,7 @@ export interface Order {
   total_usd: number
   total_cop: number
   total_bs: number | null
+  cash_amount: number | null
   status: OrderStatus
   notes: string
   created_at: string
@@ -90,6 +93,8 @@ export interface NewOrder {
   address: string
   payment_method: string
   items: { variant_id: string; qty: number }[]
+  /** Con cuánto va a pagar el cliente (solo métodos en efectivo), para calcular el vuelto. null = paga exacto o no aplica */
+  cash_amount: number | null
 }
 
 export interface OrderResult {

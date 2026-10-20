@@ -1,4 +1,4 @@
-import { digits, money } from './format'
+import { cashAmountText, changeDueText, digits, money } from './format'
 import type { Delivery, OrderResult } from './types'
 
 interface MessageInput {
@@ -10,9 +10,14 @@ interface MessageInput {
   delivery: Delivery
   address: string
   paymentMethod: string
+  /** Con cuánto dijo el cliente que va a pagar (solo métodos en efectivo), null si no aplica */
+  cashAmount: number | null
 }
 
 export function orderMessage(m: MessageInput) {
+  const o = { currency: m.result.currency, total_usd: m.result.total_usd, total_cop: m.result.total_cop, total_bs: m.result.total_bs, cash_amount: m.cashAmount }
+  const paidWith = cashAmountText(o)
+  const change = changeDueText(o)
   const lines = [
     `*Pedido ${m.result.code}* · ${m.storeName}`,
     '',
@@ -22,6 +27,7 @@ export function orderMessage(m: MessageInput) {
     ...(m.delivery === 'delivery' && m.address ? [`Dirección: ${m.address}`] : []),
     `Pago: ${m.paymentMethod}`,
     `*Total: ${money(m.result.currency, { usd: m.result.total_usd, cop: m.result.total_cop, bs: m.result.total_bs })}*${m.delivery === 'delivery' ? ' + delivery' : ''}`,
+    ...(paidWith ? [`Paga con: ${paidWith}${change ? ` (vuelto: ${change})` : ''}`] : []),
     '',
     `${m.customerName} · ${m.customerPhone}`
   ]

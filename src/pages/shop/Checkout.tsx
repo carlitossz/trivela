@@ -30,13 +30,14 @@ export default function Checkout() {
   const [delivery, setDelivery] = useState<Delivery>('pickup')
   const [address, setAddress] = useState(saved.address ?? '')
   const [method, setMethod] = useState('')
+  const [cashAmount, setCashAmount] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
 
   // El aviso de error se quita apenas el cliente corrige algo
   useEffect(() => {
     setError('')
-  }, [name, phone, delivery, address, method])
+  }, [name, phone, delivery, address, method, cashAmount])
 
   if (cart.items.length === 0 && !sending) return <Navigate to="/carrito" replace />
 
@@ -44,6 +45,9 @@ export default function Checkout() {
   const selected = methods.find((m) => m.name === method)
   const bsTotal = settings?.bs_rate != null ? Math.round(cart.totalUsd * settings.bs_rate * 100) / 100 : null
   const total = money(selected?.currency ?? 'USD', { usd: cart.totalUsd, cop: cart.totalCop, bs: bsTotal })
+  const totalInSelectedCurrency = selected?.currency === 'COP' ? cart.totalCop : selected?.currency === 'BS' ? (bsTotal ?? cart.totalUsd) : cart.totalUsd
+  const cashAmountNum = cashAmount.trim() === '' ? null : Number(cashAmount)
+  const changeDue = cashAmountNum != null && cashAmountNum >= totalInSelectedCurrency ? cashAmountNum - totalInSelectedCurrency : null
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -51,6 +55,9 @@ export default function Checkout() {
     if (!name.trim() || !phone.trim()) return setError('Escribe tu nombre y tu WhatsApp.')
     if (delivery === 'delivery' && !address.trim()) return setError('Escribe la dirección de entrega.')
     if (!selected) return setError('Elige cómo vas a pagar.')
+    if (selected.cash && cashAmountNum != null && cashAmountNum < totalInSelectedCurrency) return setError('Ese monto no alcanza para cubrir el total.')
+
+    const cashToSend = selected.cash ? cashAmountNum : null
 
     setSending(true)
     try {
@@ -60,7 +67,8 @@ export default function Checkout() {
         delivery,
         address: delivery === 'delivery' ? address : '',
         payment_method: selected.name,
-        items: cart.items.map((i) => ({ variant_id: i.variant_id, qty: i.qty }))
+        items: cart.items.map((i) => ({ variant_id: i.variant_id, qty: i.qty })),
+        cash_amount: cashToSend
       })
       const message = orderMessage({
         storeName: settings?.store_name ?? 'Trivela',
@@ -70,7 +78,8 @@ export default function Checkout() {
         customerPhone: phone.trim(),
         delivery,
         address: address.trim(),
-        paymentMethod: selected.name
+        paymentMethod: selected.name,
+        cashAmount: cashToSend
       })
       const done = { code: result.code, message, total: money(result.currency, { usd: result.total_usd, cop: result.total_cop, bs: result.total_bs }), paymentDetails: selected.details, reserveHours: settings?.reserve_hours ?? 0 }
       try {
@@ -161,13 +170,41 @@ export default function Checkout() {
                   key={m.name}
                   className={`grid h-12 cursor-pointer place-items-center rounded-xl border px-1 text-center text-[13px] font-semibold leading-tight ${method === m.name ? 'border-2 border-white bg-white font-bold text-ink' : 'border-line2 bg-panel'}`}
                 >
-                  <input type="radio" name="payment" value={m.name} checked={method === m.name} onChange={() => setMethod(m.name)} className="sr-only" />
+                  <input
+                    type="radio"
+                    name="payment"
+                    value={m.name}
+                    checked={method === m.name}
+                    onChange={() => {
+                      setMethod(m.name)
+                      if (!m.cash) setCashAmount('')
+                    }}
+                    className="sr-only"
+                  />
                   {m.name}
                 </label>
               ))}
             </div>
           )}
-          {selected?.details && <p className="text-xs text-muted">{selected.details}</p>}
+          {selected?.details && <p className="whitespace-pre-line text-xs text-muted">{selected.details}</p>}
+          {selected?.cash && (
+            <label className="flex flex-col gap-1 text-xs font-semibold text-[#D4D4D4]">
+              ¿Con cuánto vas a pagar? (opcional)
+              <input
+                className="field"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                value={cashAmount}
+                onChange={(e) => setCashAmount(e.target.value)}
+                placeholder={`Ej. si el total es ${total}, escribe con cuánto pagas`}
+              />
+              <span className="font-normal text-soft">Si vas a pagar con un billete más grande, dinos con cuánto para que te tengan el vuelto listo.</span>
+              {changeDue != null && selected && (
+                <span className="font-semibold text-[#F2D27A]">Te deberían devolver {money(selected.currency, { usd: changeDue, cop: changeDue, bs: changeDue })} de vuelto.</span>
+              )}
+            </label>
+          )}
         </fieldset>
 
         {error && (
