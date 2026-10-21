@@ -1,4 +1,4 @@
-import type { ReactNode, SVGProps } from 'react'
+import { useState, type ReactNode, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { api, configError } from '../lib/api'
 
@@ -24,7 +24,7 @@ function Ball(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-type IconName = 'back' | 'bag' | 'search' | 'wa' | 'plus' | 'minus' | 'trash' | 'check' | 'x' | 'home' | 'box' | 'shirt' | 'list' | 'gear' | 'out' | 'up' | 'edit' | 'refresh' | 'pin' | 'truck' | 'card' | 'chevron'
+type IconName = 'back' | 'bag' | 'search' | 'wa' | 'plus' | 'minus' | 'trash' | 'check' | 'x' | 'home' | 'box' | 'shirt' | 'list' | 'gear' | 'out' | 'up' | 'edit' | 'refresh' | 'pin' | 'truck' | 'card' | 'chevron' | 'copy'
 
 const PATHS: Record<IconName, ReactNode> = {
   back: <path d="M15 5l-7 7 7 7" />,
@@ -99,7 +99,13 @@ const PATHS: Record<IconName, ReactNode> = {
       <circle cx="17" cy="18" r="1.8" />
     </>
   ),
-  chevron: <path d="M6 9l6 6 6-6" />
+  chevron: <path d="M6 9l6 6 6-6" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+    </>
+  )
 }
 
 export function Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {
@@ -137,6 +143,54 @@ export function JerseyImage({ src, alt, className = '' }: { src: string | null; 
     )
   }
   return <img src={src} alt={alt} loading="lazy" className={`object-contain ${className}`} />
+}
+
+/** Muestra los datos de un método de pago en renglones separados, cada uno con su botón de copiar */
+export function PaymentDetailsBox({ details, cash }: { details: string; cash: boolean }) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  const lines = details
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+  if (!lines.length) return null
+
+  async function copy(line: string, i: number) {
+    try {
+      await navigator.clipboard.writeText(line)
+    } catch {
+      /* el navegador no dejó copiar; el texto sigue visible para copiarlo a mano */
+    }
+    setCopiedIdx(i)
+    setTimeout(() => setCopiedIdx((c) => (c === i ? null : c)), 1500)
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-line bg-panel2 p-3">
+      <span className="text-[11px] font-bold uppercase tracking-wide text-soft">Datos para pagar</span>
+      <div className="flex flex-col gap-1.5">
+        {lines.map((line, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => copy(line, i)}
+            className="flex items-center justify-between gap-2 rounded-lg border border-line2 bg-panel px-3 py-2 text-left"
+          >
+            <span className="truncate text-sm font-semibold">{line}</span>
+            <span className={`flex shrink-0 items-center gap-1 text-[11px] font-bold ${copiedIdx === i ? 'text-wa' : 'text-soft'}`}>
+              <Icon name={copiedIdx === i ? 'check' : 'copy'} size={14} />
+              {copiedIdx === i ? 'Copiado' : 'Copiar'}
+            </span>
+          </button>
+        ))}
+      </div>
+      {!cash && (
+        <p className="flex items-start gap-1.5 rounded-lg bg-[#132B1C] px-3 py-2 text-[12px] font-semibold leading-snug text-[#7FDB9C]">
+          <Icon name="wa" size={14} className="mt-0.5 shrink-0" />
+          Después de pagar, envía la captura del comprobante por WhatsApp para que te confirmemos más rápido.
+        </p>
+      )}
+    </div>
+  )
 }
 
 export function DemoBanner({ light = false }: { light?: boolean }) {

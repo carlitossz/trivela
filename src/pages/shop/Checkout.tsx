@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ShopShell } from '../../components/ShopLayout'
-import { BackButton, Icon, Spinner } from '../../components/ui'
+import { BackButton, Icon, PaymentDetailsBox, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
 import { errorMessage, hoursText, money } from '../../lib/format'
 import { useCart, useSettings } from '../../lib/store'
@@ -81,7 +81,14 @@ export default function Checkout() {
         paymentMethod: selected.name,
         cashAmount: cashToSend
       })
-      const done = { code: result.code, message, total: money(result.currency, { usd: result.total_usd, cop: result.total_cop, bs: result.total_bs }), paymentDetails: selected.details, reserveHours: settings?.reserve_hours ?? 0 }
+      const done = {
+        code: result.code,
+        message,
+        total: money(result.currency, { usd: result.total_usd, cop: result.total_cop, bs: result.total_bs }),
+        paymentDetails: selected.details,
+        paymentCash: selected.cash,
+        reserveHours: settings?.reserve_hours ?? 0
+      }
       try {
         localStorage.setItem(CUSTOMER_KEY, JSON.stringify({ name: name.trim(), phone: phone.trim(), address: address.trim() }))
         sessionStorage.setItem(LAST_ORDER_KEY, JSON.stringify(done))
@@ -189,7 +196,7 @@ export default function Checkout() {
               ))}
             </div>
           )}
-          {selected?.details && <p className="whitespace-pre-line text-xs text-muted">{selected.details}</p>}
+          {selected?.details && <PaymentDetailsBox details={selected.details} cash={selected.cash} />}
           {selected?.cash && (
             <label className="flex flex-col gap-1 text-xs font-semibold text-[#D4D4D4]">
               ¿Con cuánto vas a pagar? (opcional)
