@@ -36,12 +36,12 @@ alter table public.settings add column if not exists reserve_hours int not null 
 
 insert into public.settings (id, payment_methods, pickup_info, delivery_info)
 values (1,
-  '[{"name":"Efectivo $","currency":"USD","details":"Pagas en dólares al recibir.","enabled":true},
-    {"name":"Efectivo pesos","currency":"COP","details":"Pagas en pesos al recibir.","enabled":true},
-    {"name":"Bolívares","currency":"BS","details":"Pago Móvil o transferencia a la tasa del día.","enabled":true},
-    {"name":"Binance","currency":"USD","details":"Te enviamos el ID de Binance Pay por WhatsApp.","enabled":true},
-    {"name":"Bancolombia","currency":"COP","details":"Te enviamos los datos de la cuenta por WhatsApp.","enabled":true},
-    {"name":"Zinli","currency":"USD","details":"Te enviamos el correo de Zinli por WhatsApp.","enabled":true}]'::jsonb,
+  '[{"name":"Efectivo $","currency":"USD","details":"Pagas en dólares al recibir.","enabled":true,"cash":true},
+    {"name":"Efectivo pesos","currency":"COP","details":"Pagas en pesos al recibir.","enabled":true,"cash":true},
+    {"name":"Bolívares","currency":"BS","details":"Pago Móvil o transferencia a la tasa del día.","enabled":true,"cash":false},
+    {"name":"Binance","currency":"USD","details":"Te enviamos el ID de Binance Pay por WhatsApp.","enabled":true,"cash":false},
+    {"name":"Bancolombia","currency":"COP","details":"Te enviamos los datos de la cuenta por WhatsApp.","enabled":true,"cash":false},
+    {"name":"Zinli","currency":"USD","details":"Te enviamos el correo de Zinli por WhatsApp.","enabled":true,"cash":false}]'::jsonb,
   'Coordinamos el punto de entrega por WhatsApp.',
   'El costo depende de la zona; te lo confirmamos por WhatsApp.')
 on conflict (id) do nothing;
@@ -59,17 +59,28 @@ create table if not exists public.products (
   price_cop numeric(12,0) not null default 75000,
   image_url text,
   active boolean not null default true,
+  dorsals jsonb not null default '[]'::jsonb,     -- lista de dorsales elegibles, ej. ["Lamine Yamal 10","Pedri 8"]. Vacío = no aplica
   created_at timestamptz not null default now()
 );
 
--- Stock por talla
+-- Para bases creadas antes de que existiera esta columna
+alter table public.products add column if not exists dorsals jsonb not null default '[]'::jsonb;
+
+-- Stock por talla (y, si aplica, por dorsal)
 create table if not exists public.variants (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
   size text not null,
+  dorsal text not null default '',    -- '' = sin dorsal / en blanco. Cada combinación talla+dorsal tiene su propio stock.
   stock int not null default 0 check (stock >= 0),
-  unique (product_id, size)
+  unique (product_id, size, dorsal)
 );
+
+-- Para bases creadas antes de que existiera esta columna
+alter table public.variants add column if not exists dorsal text not null default '';
+alter table public.variants drop constraint if exists variants_product_id_size_key;
+alter table public.variants drop constraint if exists variants_product_id_size_dorsal_key;
+alter table public.variants add constraint variants_product_id_size_dorsal_key unique (product_id, size, dorsal);
 
 -- ---------- Pedidos ----------
 create sequence if not exists public.order_code_seq start 1;
@@ -86,10 +97,14 @@ create table if not exists public.orders (
   total_usd numeric(10,2) not null,
   total_cop numeric(12,0) not null,
   total_bs numeric(14,2),
+  cash_amount numeric(14,2),  -- con cuánto dijo el cliente que paga (solo efectivo); null = paga exacto o no aplica
   status text not null default 'pendiente' check (status in ('pendiente', 'pagado', 'entregado', 'cancelado')),
   notes text not null default '',
   created_at timestamptz not null default now()
 );
+
+-- Para bases creadas antes de que existiera esta columna
+alter table public.orders add column if not exists cash_amount numeric(14,2);
 
 create table if not exists public.order_items (
   id uuid primary key default gen_random_uuid(),
@@ -98,10 +113,14 @@ create table if not exists public.order_items (
   variant_id uuid references public.variants(id) on delete set null,
   product_name text not null,
   size text not null,
+  dorsal text not null default '',    -- dorsal pedido, copiado al momento de la compra ('' = sin dorsal)
   qty int not null check (qty > 0),
   unit_usd numeric(10,2) not null,
   unit_cop numeric(12,0) not null
 );
+
+-- Para bases creadas antes de que existiera esta columna
+alter table public.order_items add column if not exists dorsal text not null default '';
 
 create index if not exists orders_created_idx on public.orders (created_at desc);
 create index if not exists order_items_order_idx on public.order_items (order_id);
@@ -188,18 +207,21 @@ create or replace function public.create_order(
   p_delivery text,
   p_address text,
   p_payment_method text,
-  p_items jsonb
+  p_items jsonb,
+  p_cash_amount numeric default null
 ) returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 declare
   v_currency text;
   v_rate numeric;
+  v_is_cash boolean;
   v_order_id uuid;
   v_code text;
   v_total_usd numeric := 0;
   v_total_cop numeric := 0;
   v_total_bs numeric;
+  v_total_selected numeric;
   v_item jsonb;
   v_qty int;
   r record;
@@ -223,18 +245,24 @@ begin
   -- Antes de revisar stock, se liberan los apartados vencidos
   perform public.release_expired_orders();
 
-  select pm ->> 'currency', s.bs_rate into v_currency, v_rate
+  select pm ->> 'currency', s.bs_rate, coalesce((pm ->> 'cash')::boolean, false) into v_currency, v_rate, v_is_cash
   from public.settings s, jsonb_array_elements(s.payment_methods) pm
   where s.id = 1 and pm ->> 'name' = p_payment_method and coalesce((pm ->> 'enabled')::boolean, true)
   limit 1;
   if v_currency is null then
     raise exception 'Ese método de pago no está disponible';
   end if;
+  if p_cash_amount is not null and not v_is_cash then
+    raise exception 'Ese método de pago no es en efectivo';
+  end if;
+  if p_cash_amount is not null and p_cash_amount < 0 then
+    raise exception 'Monto no válido';
+  end if;
 
   v_order_id := gen_random_uuid();
-  insert into public.orders (id, code, customer_name, customer_phone, delivery, address, payment_method, currency, total_usd, total_cop)
+  insert into public.orders (id, code, customer_name, customer_phone, delivery, address, payment_method, currency, total_usd, total_cop, cash_amount)
   values (v_order_id, v_order_id::text, left(trim(p_customer_name), 80), left(trim(p_customer_phone), 30), p_delivery,
-          left(coalesce(trim(p_address), ''), 240), p_payment_method, v_currency, 0, 0);
+          left(coalesce(trim(p_address), ''), 240), p_payment_method, v_currency, 0, 0, p_cash_amount);
 
   for v_item in select * from jsonb_array_elements(p_items) loop
     v_qty := (v_item ->> 'qty')::int;
@@ -242,7 +270,7 @@ begin
       raise exception 'Cantidad no válida';
     end if;
 
-    select v.id as variant_id, v.size, v.stock, p.id as product_id, p.name, p.price_usd, p.price_cop, p.active
+    select v.id as variant_id, v.size, v.dorsal, v.stock, p.id as product_id, p.name, p.price_usd, p.price_cop, p.active
     into r
     from public.variants v join public.products p on p.id = v.product_id
     where v.id = (v_item ->> 'variant_id')::uuid
@@ -252,13 +280,13 @@ begin
       raise exception 'Una de las franelas ya no está disponible';
     end if;
     if r.stock < v_qty then
-      raise exception 'Ya no queda stock de % talla %', r.name, r.size;
+      raise exception 'Ya no queda stock de % talla %', r.name, r.size || case when r.dorsal <> '' then ' (' || r.dorsal || ')' else '' end;
     end if;
 
     update public.variants set stock = stock - v_qty where id = r.variant_id;
 
-    insert into public.order_items (order_id, product_id, variant_id, product_name, size, qty, unit_usd, unit_cop)
-    values (v_order_id, r.product_id, r.variant_id, r.name, r.size, v_qty, r.price_usd, r.price_cop);
+    insert into public.order_items (order_id, product_id, variant_id, product_name, size, dorsal, qty, unit_usd, unit_cop)
+    values (v_order_id, r.product_id, r.variant_id, r.name, r.size, r.dorsal, v_qty, r.price_usd, r.price_cop);
 
     v_total_usd := v_total_usd + r.price_usd * v_qty;
     v_total_cop := v_total_cop + r.price_cop * v_qty;
@@ -266,6 +294,11 @@ begin
 
   if v_rate is not null then
     v_total_bs := round(v_total_usd * v_rate, 2);
+  end if;
+
+  v_total_selected := case v_currency when 'COP' then v_total_cop when 'BS' then coalesce(v_total_bs, v_total_usd) else v_total_usd end;
+  if p_cash_amount is not null and p_cash_amount < v_total_selected then
+    raise exception 'Ese monto no alcanza para cubrir el total';
   end if;
 
   -- El número se toma al final: si algo falla antes, no se pierde ningún número
@@ -279,8 +312,10 @@ begin
 end;
 $$;
 
-revoke all on function public.create_order(text, text, text, text, text, jsonb) from public;
-grant execute on function public.create_order(text, text, text, text, text, jsonb) to anon, authenticated;
+revoke all on function public.create_order(text, text, text, text, text, jsonb, numeric) from public;
+grant execute on function public.create_order(text, text, text, text, text, jsonb, numeric) to anon, authenticated;
+-- Si existe la versión anterior de la función (sin el parámetro de efectivo), se elimina para evitar ambigüedad
+drop function if exists public.create_order(text, text, text, text, text, jsonb);
 
 -- ---------- Cambiar estado de un pedido (lo usa el admin) ----------
 -- Si se cancela, las tallas vuelven al stock.
