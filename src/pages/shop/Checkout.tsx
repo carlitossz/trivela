@@ -85,7 +85,8 @@ export default function Checkout() {
         code: result.code,
         message,
         total: money(result.currency, { usd: result.total_usd, cop: result.total_cop, bs: result.total_bs }),
-        paymentDetails: selected.details,
+        paymentNote: selected.note,
+        paymentFields: selected.fields,
         paymentCash: selected.cash,
         reserveHours: settings?.reserve_hours ?? 0
       }
@@ -196,7 +197,7 @@ export default function Checkout() {
               ))}
             </div>
           )}
-          {selected?.details && <PaymentDetailsBox details={selected.details} cash={selected.cash} />}
+          {selected && <PaymentDetailsBox note={selected.note} fields={selected.fields} cash={selected.cash} />}
           {selected?.cash && (
             <label className="flex flex-col gap-1 text-xs font-semibold text-[#D4D4D4]">
               ¿Con cuánto vas a pagar? (opcional)

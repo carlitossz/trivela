@@ -145,18 +145,14 @@ export function JerseyImage({ src, alt, className = '' }: { src: string | null; 
   return <img src={src} alt={alt} loading="lazy" className={`object-contain ${className}`} />
 }
 
-/** Muestra los datos de un método de pago en renglones separados, cada uno con su botón de copiar */
-export function PaymentDetailsBox({ details, cash }: { details: string; cash: boolean }) {
+/** Muestra los datos de un método de pago: una nota libre + renglones etiquetados, cada uno con botón de copiar solo si corresponde */
+export function PaymentDetailsBox({ note, fields, cash }: { note: string; fields: { label: string; value: string; copyable: boolean }[]; cash: boolean }) {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
-  const lines = details
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-  if (!lines.length) return null
+  if (!note && fields.length === 0) return null
 
-  async function copy(line: string, i: number) {
+  async function copy(value: string, i: number) {
     try {
-      await navigator.clipboard.writeText(line)
+      await navigator.clipboard.writeText(value)
     } catch {
       /* el navegador no dejó copiar; el texto sigue visible para copiarlo a mano */
     }
@@ -167,22 +163,35 @@ export function PaymentDetailsBox({ details, cash }: { details: string; cash: bo
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-line bg-panel2 p-3">
       <span className="text-[11px] font-bold uppercase tracking-wide text-soft">Datos para pagar</span>
-      <div className="flex flex-col gap-1.5">
-        {lines.map((line, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => copy(line, i)}
-            className="flex items-center justify-between gap-2 rounded-lg border border-line2 bg-panel px-3 py-2 text-left"
-          >
-            <span className="truncate text-sm font-semibold">{line}</span>
-            <span className={`flex shrink-0 items-center gap-1 text-[11px] font-bold ${copiedIdx === i ? 'text-wa' : 'text-soft'}`}>
-              <Icon name={copiedIdx === i ? 'check' : 'copy'} size={14} />
-              {copiedIdx === i ? 'Copiado' : 'Copiar'}
-            </span>
-          </button>
-        ))}
-      </div>
+      {note && <p className="text-xs text-muted">{note}</p>}
+      {fields.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {fields.map((f, i) =>
+            f.copyable ? (
+              <button
+                key={i}
+                type="button"
+                onClick={() => copy(f.value, i)}
+                className="flex items-center justify-between gap-2 rounded-lg border border-line2 bg-panel px-3 py-2 text-left"
+              >
+                <span className="truncate text-sm">
+                  {f.label && <span className="text-muted">{f.label}: </span>}
+                  <span className="font-semibold">{f.value}</span>
+                </span>
+                <span className={`flex shrink-0 items-center gap-1 text-[11px] font-bold ${copiedIdx === i ? 'text-wa' : 'text-soft'}`}>
+                  <Icon name={copiedIdx === i ? 'check' : 'copy'} size={14} />
+                  {copiedIdx === i ? 'Copiado' : 'Copiar'}
+                </span>
+              </button>
+            ) : (
+              <div key={i} className="rounded-lg px-3 py-1.5 text-sm">
+                {f.label && <span className="text-muted">{f.label}: </span>}
+                <span className="font-semibold">{f.value}</span>
+              </div>
+            )
+          )}
+        </div>
+      )}
       {!cash && (
         <p className="flex items-start gap-1.5 rounded-lg bg-[#132B1C] px-3 py-2 text-[12px] font-semibold leading-snug text-[#7FDB9C]">
           <Icon name="wa" size={14} className="mt-0.5 shrink-0" />

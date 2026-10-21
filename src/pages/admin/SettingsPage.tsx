@@ -35,6 +35,10 @@ export default function SettingsPage() {
       'payment_methods',
       form.payment_methods.map((m, j) => (j === i ? { ...m, ...patch } : m))
     )
+  const addField = (i: number) => setMethod(i, { fields: [...form.payment_methods[i].fields, { label: '', value: '', copyable: true }] })
+  const setField = (i: number, k: number, patch: Partial<Settings['payment_methods'][number]['fields'][number]>) =>
+    setMethod(i, { fields: form.payment_methods[i].fields.map((f, j) => (j === k ? { ...f, ...patch } : f)) })
+  const removeField = (i: number, k: number) => setMethod(i, { fields: form.payment_methods[i].fields.filter((_, j) => j !== k) })
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -124,7 +128,7 @@ export default function SettingsPage() {
             <button
               type="button"
               className="a-btn h-9"
-              onClick={() => set('payment_methods', [...form.payment_methods, { name: '', currency: 'USD', details: '', enabled: true, cash: false }])}
+              onClick={() => set('payment_methods', [...form.payment_methods, { name: '', currency: 'USD', note: '', fields: [], enabled: true, cash: false }])}
             >
               <Icon name="plus" size={16} /> Agregar
             </button>
@@ -157,13 +161,42 @@ export default function SettingsPage() {
                     <Icon name="trash" size={16} />
                   </button>
                 </div>
-                <textarea
-                  className="a-field h-16 py-2"
-                  aria-label="Instrucciones y datos para el cliente"
-                  value={m.details}
-                  onChange={(e) => setMethod(i, { details: e.target.value })}
-                  placeholder="Lo que ve el cliente al elegirlo: puedes poner aquí directo el número de cuenta, el banco, el titular, el ID de Binance, etc."
-                />
+                <label className="a-label">
+                  Nota (opcional, no se puede copiar)
+                  <input
+                    className="a-field"
+                    aria-label="Nota para el cliente"
+                    value={m.note}
+                    onChange={(e) => setMethod(i, { note: e.target.value })}
+                    placeholder='Ej. "Pago Móvil a la tasa del día"'
+                  />
+                </label>
+
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-[#444]">Datos para pagar (cada uno en su casilla)</span>
+                  {m.fields.map((f, k) => (
+                    <div key={k} className="grid grid-cols-[1fr_1.4fr_auto_auto] items-center gap-1.5">
+                      <input className="a-field" aria-label="Etiqueta" value={f.label} onChange={(e) => setField(i, k, { label: e.target.value })} placeholder="Ej. Teléfono" />
+                      <input className="a-field" aria-label="Valor" value={f.value} onChange={(e) => setField(i, k, { value: e.target.value })} placeholder="Ej. 0414-1234567" />
+                      <label className="flex items-center gap-1 text-[11px] font-semibold text-[#444]" title="¿El cliente lo puede copiar con un botón?">
+                        <input type="checkbox" className="h-4 w-4 accent-ink" checked={f.copyable} onChange={(e) => setField(i, k, { copyable: e.target.checked })} />
+                        Copiable
+                      </label>
+                      <button
+                        type="button"
+                        aria-label={`Quitar dato ${f.label || k + 1}`}
+                        className="grid h-9 w-9 place-items-center rounded-lg border border-[#D6D6D2] text-[#7A2318]"
+                        onClick={() => removeField(i, k)}
+                      >
+                        <Icon name="trash" size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="a-btn h-9 self-start" onClick={() => addField(i)}>
+                    <Icon name="plus" size={14} /> Agregar dato
+                  </button>
+                </div>
+
                 <label className="flex items-center gap-2 text-xs font-semibold text-[#444]">
                   <input type="checkbox" className="h-4 w-4 accent-ink" checked={m.cash} onChange={(e) => setMethod(i, { cash: e.target.checked })} />
                   Es efectivo en mano (el cliente puede decir con cuánto paga, para que sepas qué vuelto darle)
@@ -171,7 +204,10 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-[#5C5C5C]">La moneda define en qué se le muestra el total al cliente: dólares, pesos, o bolívares con la tasa del día. Lo que escribas en "Instrucciones" ya se le muestra al cliente de una vez, sin que tengas que pasárselo tú por WhatsApp.</p>
+          <p className="text-xs text-[#5C5C5C]">
+            La moneda define en qué se le muestra el total al cliente. Marca "Copiable" solo en los datos que el cliente de verdad va a pegar en algún lado (teléfono, número
+            de cuenta, cédula); deja sin marcar cosas como el nombre del banco, que son solo informativas.
+          </p>
         </section>
       </div>
 

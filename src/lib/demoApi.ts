@@ -55,12 +55,34 @@ function seed(): DemoDb {
       pickup_info: 'Coordinamos el punto de entrega por WhatsApp.',
       delivery_info: 'El costo depende de la zona; te lo confirmamos por WhatsApp.',
       payment_methods: [
-        { name: 'Efectivo $', currency: 'USD', details: 'Pagas en dólares al recibir.', enabled: true, cash: true },
-        { name: 'Efectivo pesos', currency: 'COP', details: 'Pagas en pesos al recibir.', enabled: true, cash: true },
-        { name: 'Bolívares', currency: 'BS', details: 'Pago Móvil o transferencia a la tasa del día.', enabled: true, cash: false },
-        { name: 'Binance', currency: 'USD', details: 'Te enviamos el ID de Binance Pay por WhatsApp.', enabled: true, cash: false },
-        { name: 'Bancolombia', currency: 'COP', details: 'Te enviamos los datos de la cuenta por WhatsApp.', enabled: true, cash: false },
-        { name: 'Zinli', currency: 'USD', details: 'Te enviamos el correo de Zinli por WhatsApp.', enabled: true, cash: false }
+        { name: 'Efectivo $', currency: 'USD', note: 'Pagas en dólares al recibir.', fields: [], enabled: true, cash: true },
+        { name: 'Efectivo pesos', currency: 'COP', note: 'Pagas en pesos al recibir.', fields: [], enabled: true, cash: true },
+        {
+          name: 'Bolívares',
+          currency: 'BS',
+          note: 'Pago Móvil a la tasa del día.',
+          fields: [
+            { label: 'Banco', value: 'Banesco', copyable: false },
+            { label: 'Teléfono', value: '0414-1234567', copyable: true },
+            { label: 'Cédula', value: 'V-12345678', copyable: true }
+          ],
+          enabled: true,
+          cash: false
+        },
+        { name: 'Binance', currency: 'USD', note: '', fields: [{ label: 'ID Binance Pay', value: '123456789', copyable: true }], enabled: true, cash: false },
+        {
+          name: 'Bancolombia',
+          currency: 'COP',
+          note: '',
+          fields: [
+            { label: 'Banco', value: 'Bancolombia', copyable: false },
+            { label: 'Número de cuenta', value: '000-000000-00', copyable: true },
+            { label: 'Titular', value: 'Nombre del titular', copyable: false }
+          ],
+          enabled: true,
+          cash: false
+        },
+        { name: 'Zinli', currency: 'USD', note: '', fields: [{ label: 'Correo', value: 'correo@ejemplo.com', copyable: true }], enabled: true, cash: false }
       ]
     },
     products,

@@ -38,10 +38,21 @@ export interface Product {
 /** Clave para guardar/leer el stock de una combinación talla+dorsal en ProductInput.stock */
 export const variantKey = (dorsal: string, size: string) => (dorsal ? `${dorsal}\u0001${size}` : size)
 
+export interface PaymentField {
+  /** Ej. "Banco", "Teléfono", "Cédula" */
+  label: string
+  value: string
+  /** Si debe salirle al cliente con botón de copiar (ej. teléfono, cuenta) o solo como texto (ej. nombre del banco) */
+  copyable: boolean
+}
+
 export interface PaymentMethod {
   name: string
   currency: Currency
-  details: string
+  /** Texto corto, no copiable, ej. "Pago Móvil a la tasa del día" */
+  note: string
+  /** Datos estructurados que ve el cliente, cada uno con su propia etiqueta y si es copiable */
+  fields: PaymentField[]
   enabled: boolean
   /** Es pago en efectivo en mano: el cliente puede decir con qué billete paga para que le preparen el vuelto */
   cash: boolean
