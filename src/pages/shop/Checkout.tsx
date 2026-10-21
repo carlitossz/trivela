@@ -73,7 +73,7 @@ export default function Checkout() {
       const message = orderMessage({
         storeName: settings?.store_name ?? 'Trivela',
         result,
-        items: cart.items.map((i) => ({ name: i.name, size: i.size, qty: i.qty })),
+        items: cart.items.map((i) => ({ name: i.name, size: i.size, dorsal: i.dorsal, qty: i.qty })),
         customerName: name.trim(),
         customerPhone: phone.trim(),
         delivery,
@@ -109,7 +109,10 @@ export default function Checkout() {
             <div key={i.variant_id} className="flex items-center justify-between gap-3 border-b border-[#262626] py-3 text-sm last:border-0">
               <span>
                 <span className="font-bold">{i.qty}× {i.name}</span>
-                <span className="text-muted"> · Talla {i.size}</span>
+                <span className="text-muted">
+                  {' '}· Talla {i.size}
+                  {i.dorsal && ` · ${i.dorsal}`}
+                </span>
               </span>
               <Link to="/carrito" className="text-xs font-semibold text-soft underline">
                 Cambiar

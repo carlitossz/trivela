@@ -14,13 +14,29 @@ export default function ProductDetail() {
   const { settings } = useSettings()
   const cart = useCart()
   const [picked, setPicked] = useState('')
+  const [pickedDorsal, setPickedDorsal] = useState<string | null>(null)
+
+  // Dorsales con al menos una unidad disponible en alguna talla. Los que no tienen stock no se muestran.
+  const dorsalOptions = p ? ['', ...p.dorsals].filter((d) => p.variants.some((v) => v.dorsal === d && v.stock > 0)) : []
+  const showDorsalPicker = (p?.dorsals.length ?? 0) > 0 && dorsalOptions.length > 0
 
   useEffect(() => {
-    if (p && !picked) {
-      const first = p.variants.find((v) => v.stock > 0)
+    if (p && pickedDorsal === null) setPickedDorsal(dorsalOptions[0] ?? '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p])
+
+  useEffect(() => {
+    if (p && pickedDorsal !== null && !picked) {
+      const first = p.variants.find((v) => v.dorsal === pickedDorsal && v.stock > 0)
       if (first) setPicked(first.size)
     }
-  }, [p, picked])
+  }, [p, picked, pickedDorsal])
+
+  function pickDorsal(d: string) {
+    setPickedDorsal(d)
+    const first = p?.variants.find((v) => v.dorsal === d && v.stock > 0)
+    setPicked(first?.size ?? '')
+  }
 
   if (loading && !p) {
     return (
@@ -45,18 +61,20 @@ export default function ProductDetail() {
     )
   }
 
-  const variant = p.variants.find((v) => v.size === picked)
+  const dorsal = pickedDorsal ?? ''
+  const variant = p.variants.find((v) => v.size === picked && v.dorsal === dorsal)
+  const sizesForDorsal = p.variants.filter((v) => v.dorsal === dorsal)
   const inCart = cart.items.find((i) => i.variant_id === variant?.id)?.qty ?? 0
   const available = variant ? variant.stock - inCart : 0
   const soldOut = p.variants.every((v) => v.stock === 0)
 
   function addToCart() {
     if (!variant || available <= 0) return
-    cart.add({ variant_id: variant.id, product_id: p!.id, name: p!.name, size: variant.size, image_url: p!.image_url, price_usd: p!.price_usd, price_cop: p!.price_cop })
+    cart.add({ variant_id: variant.id, product_id: p!.id, name: p!.name, size: variant.size, dorsal: variant.dorsal, image_url: p!.image_url, price_usd: p!.price_usd, price_cop: p!.price_cop })
     navigate('/carrito')
   }
 
-  const askText = `Hola, ¿les va a llegar la ${p.name}${picked ? ` en talla ${picked}` : ''}?`
+  const askText = `Hola, ¿les va a llegar la ${p.name}${picked ? ` en talla ${picked}` : ''}${dorsal ? ` con el dorsal ${dorsal}` : ''}?`
 
   return (
     <ShopShell header={false}>
@@ -87,10 +105,32 @@ export default function ProductDetail() {
           {p.description && <p className="text-sm leading-relaxed text-soft">{p.description}</p>}
         </div>
 
+        {showDorsalPicker && (
+          <section className="flex flex-col gap-2.5">
+            <h2 className="text-[15px] font-bold">Dorsal</h2>
+            <div role="radiogroup" aria-label="Dorsal" className="flex flex-wrap gap-2">
+              {dorsalOptions.map((d) => (
+                <button
+                  key={d || '__blank__'}
+                  type="button"
+                  role="radio"
+                  aria-checked={dorsal === d}
+                  onClick={() => pickDorsal(d)}
+                  className={`rounded-xl px-3.5 py-2.5 text-sm font-bold ${
+                    dorsal === d ? 'border-2 border-white bg-white text-ink' : 'border border-[#5A5A5A] text-white'
+                  }`}
+                >
+                  {d || 'Sin nombre/número'}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="flex flex-col gap-2.5">
           <h2 className="text-[15px] font-bold">Talla</h2>
           <div role="radiogroup" aria-label="Talla" className="grid grid-cols-5 gap-2">
-            {p.variants.map((v) => {
+            {sizesForDorsal.map((v) => {
               const out = v.stock === 0
               const on = v.size === picked
               return (

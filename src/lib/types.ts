@@ -12,6 +12,8 @@ export interface Variant {
   id: string
   product_id: string
   size: string
+  /** Dorsal (nombre y número) de esta unidad. '' = sin dorsal / en blanco */
+  dorsal: string
   stock: number
 }
 
@@ -28,8 +30,13 @@ export interface Product {
   image_url: string | null
   active: boolean
   created_at: string
+  /** Dorsales que se pueden elegir en esta franela (ej. "Lamine Yamal 10"). Vacío = no aplica */
+  dorsals: string[]
   variants: Variant[]
 }
+
+/** Clave para guardar/leer el stock de una combinación talla+dorsal en ProductInput.stock */
+export const variantKey = (dorsal: string, size: string) => (dorsal ? `${dorsal}\u0001${size}` : size)
 
 export interface PaymentMethod {
   name: string
@@ -60,6 +67,8 @@ export interface OrderItem {
   variant_id: string | null
   product_name: string
   size: string
+  /** Dorsal pedido, copiado al momento de la compra. '' = sin dorsal */
+  dorsal: string
   qty: number
   unit_usd: number
   unit_cop: number
@@ -118,6 +127,8 @@ export interface ProductInput {
   price_cop: number
   image_url: string | null
   active: boolean
+  dorsals: string[]
+  /** Stock por combinación. Clave: variantKey(dorsal, size) */
   stock: Record<string, number>
 }
 

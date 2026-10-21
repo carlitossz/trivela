@@ -42,7 +42,7 @@ export default function Inventory() {
     timers.current[variantId] = setTimeout(async () => {
       try {
         await api.setStock(variantId, next)
-        setToast(`Guardado · ${p.name} ${v.size}: ${next}`)
+        setToast(`Guardado · ${p.name} ${v.size}${v.dorsal ? ` ${v.dorsal}` : ''}: ${next}`)
       } catch (e) {
         setToast(`No se guardó: ${errorMessage(e)}`)
         reload()
@@ -109,31 +109,63 @@ export default function Inventory() {
                 <Icon name="edit" size={16} />
               </Link>
             </div>
-            <div className="grid grid-cols-5 gap-1.5">
-              {p.variants.map((v) => (
-                <div
-                  key={v.id}
-                  className={`flex flex-col items-center rounded-xl border pt-1.5 ${
-                    v.stock === 0 ? 'border-dashed border-[#BDBDB8] bg-[#F7F7F5]' : v.stock === 1 ? 'border-[#E3C766] bg-[#FFF1C2]' : 'border-[#D6D6D2] bg-white'
-                  }`}
-                >
-                  <span className="text-[11px] font-semibold text-[#5C5C5C]">{v.size}</span>
-                  <span className={`text-lg font-extrabold leading-tight ${v.stock === 0 ? 'text-[#8C8C8C]' : ''}`}>{v.stock}</span>
-                  <div className="grid w-full grid-cols-2 border-t border-black/5">
-                    <button type="button" aria-label={`Restar una ${p.name} talla ${v.size}`} onClick={() => bump(p, v.id, -1)} className="grid h-10 place-items-center text-[#5C5C5C] disabled:opacity-30" disabled={v.stock === 0}>
-                      <Icon name="minus" size={16} />
-                    </button>
-                    <button type="button" aria-label={`Sumar una ${p.name} talla ${v.size}`} onClick={() => bump(p, v.id, 1)} className="grid h-10 place-items-center border-l border-black/5 text-ink">
-                      <Icon name="plus" size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {p.dorsals.length === 0 ? (
+              <VariantGrid product={p} variants={p.variants} bump={bump} />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {['', ...p.dorsals].map((d) => {
+                  const group = p.variants.filter((v) => v.dorsal === d)
+                  if (!group.length) return null
+                  return (
+                    <div key={d || '__blank__'} className="flex flex-col gap-1.5">
+                      <span className="text-xs font-bold text-[#5C5C5C]">{d || 'Sin nombre/número'}</span>
+                      <VariantGrid product={p} variants={group} bump={bump} />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </article>
         ))}
       </div>
       <Toast text={toast} />
     </>
+  )
+}
+
+function VariantGrid({ product, variants, bump }: { product: Product; variants: Product['variants']; bump: (p: Product, variantId: string, delta: number) => void }) {
+  return (
+    <div className="grid grid-cols-5 gap-1.5">
+      {variants.map((v) => (
+        <div
+          key={v.id}
+          className={`flex flex-col items-center rounded-xl border pt-1.5 ${
+            v.stock === 0 ? 'border-dashed border-[#BDBDB8] bg-[#F7F7F5]' : v.stock === 1 ? 'border-[#E3C766] bg-[#FFF1C2]' : 'border-[#D6D6D2] bg-white'
+          }`}
+        >
+          <span className="text-[11px] font-semibold text-[#5C5C5C]">{v.size}</span>
+          <span className={`text-lg font-extrabold leading-tight ${v.stock === 0 ? 'text-[#8C8C8C]' : ''}`}>{v.stock}</span>
+          <div className="grid w-full grid-cols-2 border-t border-black/5">
+            <button
+              type="button"
+              aria-label={`Restar una ${product.name} talla ${v.size}${v.dorsal ? ` ${v.dorsal}` : ''}`}
+              onClick={() => bump(product, v.id, -1)}
+              className="grid h-10 place-items-center text-[#5C5C5C] disabled:opacity-30"
+              disabled={v.stock === 0}
+            >
+              <Icon name="minus" size={16} />
+            </button>
+            <button
+              type="button"
+              aria-label={`Sumar una ${product.name} talla ${v.size}${v.dorsal ? ` ${v.dorsal}` : ''}`}
+              onClick={() => bump(product, v.id, 1)}
+              className="grid h-10 place-items-center border-l border-black/5 text-ink"
+            >
+              <Icon name="plus" size={16} />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }

@@ -1,6 +1,6 @@
 // Modo demo: todo se guarda en el navegador. Sirve para enseñar la app sin base de datos.
 import type { Api, Order, OrderResult, Product, Settings } from './types'
-import { SIZES } from './types'
+import { SIZES, variantKey } from './types'
 
 export const DEMO_PASSWORD = 'trivela2026'
 
@@ -42,7 +42,8 @@ function seed(): DemoDb {
       image_url: img(file),
       active: true,
       created_at: new Date(now - i * 60000).toISOString(),
-      variants: SIZES.map((size) => ({ id: `${id}-${size}`, product_id: id, size, stock: sizes.includes(size) ? 1 : 0 }))
+      dorsals: [],
+      variants: SIZES.map((size) => ({ id: `${id}-${size}`, product_id: id, size, dorsal: '', stock: sizes.includes(size) ? 1 : 0 }))
     }
   })
   return {
@@ -156,13 +157,13 @@ export function createDemoApi(): Api {
         const p = db.products.find((x) => x.variants.some((v) => v.id === it.variant_id))
         const v = p?.variants.find((x) => x.id === it.variant_id)
         if (!p || !v || !p.active) throw new Error('Una de las franelas ya no está disponible')
-        if (v.stock < it.qty) throw new Error(`Ya no queda stock de ${p.name} talla ${v.size}`)
+        if (v.stock < it.qty) throw new Error(`Ya no queda stock de ${p.name} talla ${v.size}${v.dorsal ? ` (${v.dorsal})` : ''}`)
       }
       for (const it of o.items) {
         const p = db.products.find((x) => x.variants.some((v) => v.id === it.variant_id))!
         const v = p.variants.find((x) => x.id === it.variant_id)!
         v.stock -= it.qty
-        items.push({ id: uid(), product_id: p.id, variant_id: v.id, product_name: p.name, size: v.size, qty: it.qty, unit_usd: p.price_usd, unit_cop: p.price_cop })
+        items.push({ id: uid(), product_id: p.id, variant_id: v.id, product_name: p.name, size: v.size, dorsal: v.dorsal, qty: it.qty, unit_usd: p.price_usd, unit_cop: p.price_cop })
         tUsd += p.price_usd * it.qty
         tCop += p.price_cop * it.qty
       }
@@ -264,10 +265,13 @@ export function createDemoApi(): Api {
         Object.assign(p, fields)
       }
       const prod = p
-      prod.variants = SIZES.map((size) => {
-        const existing = prod.variants.find((v) => v.size === size)
-        return { id: existing?.id ?? `${prod.id}-${size}`, product_id: prod.id, size, stock: Math.max(0, stock[size] ?? 0) }
-      })
+      const allowed = ['', ...input.dorsals]
+      prod.variants = allowed.flatMap((dorsal) =>
+        SIZES.map((size) => {
+          const existing = prod.variants.find((v) => v.size === size && v.dorsal === dorsal)
+          return { id: existing?.id ?? `${prod.id}-${dorsal || 'base'}-${size}`, product_id: prod.id, size, dorsal, stock: Math.max(0, stock[variantKey(dorsal, size)] ?? 0) }
+        })
+      )
       save(db)
       return prod.id
     },

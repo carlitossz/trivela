@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Icon, JerseyImage, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
 import { errorMessage } from '../../lib/format'
-import { BADGES, CATEGORIES, COLLECTIONS, KITS, SIZES, type ProductInput } from '../../lib/types'
+import { BADGES, CATEGORIES, COLLECTIONS, KITS, SIZES, variantKey, type ProductInput } from '../../lib/types'
 import { ErrorBox, PageTitle, useConfirm } from './shared'
 
 const EMPTY: ProductInput = {
@@ -17,6 +17,7 @@ const EMPTY: ProductInput = {
   price_cop: 75000,
   image_url: null,
   active: true,
+  dorsals: [],
   stock: Object.fromEntries(SIZES.map((s) => [s, 0]))
 }
 
@@ -26,6 +27,7 @@ export default function ProductForm() {
   const [form, setForm] = useState<ProductInput | null>(id ? null : EMPTY)
   // "Colección" tiene opciones fijas + un espacio libre para una que no esté en la lista
   const [customCollection, setCustomCollection] = useState(false)
+  const [newDorsal, setNewDorsal] = useState('')
   const [loadError, setLoadError] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -51,7 +53,8 @@ export default function ProductForm() {
           price_cop: p.price_cop,
           image_url: p.image_url,
           active: p.active,
-          stock: Object.fromEntries(SIZES.map((s) => [s, p.variants.find((v) => v.size === s)?.stock ?? 0]))
+          dorsals: p.dorsals,
+          stock: Object.fromEntries(p.variants.map((v) => [variantKey(v.dorsal, v.size), v.stock]))
         })
         setCustomCollection(p.collection !== '' && !(COLLECTIONS as readonly string[]).includes(p.collection))
       })
@@ -62,6 +65,18 @@ export default function ProductForm() {
   if (!form) return <div className="grid place-items-center py-20"><Spinner dark /></div>
 
   const set = <K extends keyof ProductInput>(k: K, v: ProductInput[K]) => setForm((f) => (f ? { ...f, [k]: v } : f))
+
+  function addDorsal() {
+    const d = newDorsal.trim()
+    if (!d || form?.dorsals.includes(d)) return setNewDorsal('')
+    set('dorsals', [...(form?.dorsals ?? []), d])
+    setNewDorsal('')
+  }
+  function removeDorsal(d: string) {
+    set('dorsals', (form?.dorsals ?? []).filter((x) => x !== d))
+  }
+  const setCell = (dorsal: string, size: string, v: string) =>
+    setForm((f) => (f ? { ...f, stock: { ...f.stock, [variantKey(dorsal, size)]: Math.max(0, Math.floor(Number(v) || 0)) } } : f))
 
   async function onFile(file: File | undefined) {
     if (!file) return
@@ -221,22 +236,98 @@ export default function ProductForm() {
           </section>
 
           <section className="a-card flex flex-col gap-3 p-4">
-            <h2 className="font-bold">Stock por talla</h2>
-            <div className="grid grid-cols-5 gap-2">
-              {SIZES.map((s) => (
-                <label key={s} className="a-label items-center text-center">
-                  {s}
-                  <input
-                    className="a-field px-1 text-center text-base font-bold"
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    value={form.stock[s] ?? 0}
-                    onChange={(e) => set('stock', { ...form.stock, [s]: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-                  />
-                </label>
-              ))}
+            <h2 className="font-bold">Dorsales (opcional)</h2>
+            <p className="text-xs text-[#5C5C5C]">
+              Si esta franela se vende con nombre y número (ej. "Lamine Yamal 10"), agrégalos aquí. Al cliente solo le van a salir para elegir los que tengan stock; los
+              demás quedan ocultos solos.
+            </p>
+            <div className="flex gap-2">
+              <input
+                className="a-field"
+                value={newDorsal}
+                onChange={(e) => setNewDorsal(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addDorsal()
+                  }
+                }}
+                placeholder="Ej. Lamine Yamal 10"
+              />
+              <button type="button" className="a-btn h-11 shrink-0" onClick={addDorsal}>
+                <Icon name="plus" size={16} /> Agregar
+              </button>
             </div>
+            {form.dorsals.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {form.dorsals.map((d) => (
+                  <span key={d} className="flex items-center gap-2 rounded-full border border-[#D6D6D2] bg-[#F7F7F4] py-1 pl-3 pr-1 text-sm font-semibold">
+                    {d}
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${d}`}
+                      className="grid h-6 w-6 place-items-center rounded-full text-[#7A2318] hover:bg-[#F0DAD6]"
+                      onClick={() => removeDorsal(d)}
+                    >
+                      <Icon name="x" size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="a-card flex flex-col gap-3 p-4">
+            <h2 className="font-bold">{form.dorsals.length > 0 ? 'Stock por dorsal y talla' : 'Stock por talla'}</h2>
+            {form.dorsals.length === 0 ? (
+              <div className="grid grid-cols-5 gap-2">
+                {SIZES.map((s) => (
+                  <label key={s} className="a-label items-center text-center">
+                    {s}
+                    <input
+                      className="a-field px-1 text-center text-base font-bold"
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      value={form.stock[s] ?? 0}
+                      onChange={(e) => setCell('', s, e.target.value)}
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px] border-separate border-spacing-y-1 text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-[#5C5C5C]">
+                      <th className="px-2 font-semibold">Dorsal</th>
+                      {SIZES.map((s) => (
+                        <th key={s} className="px-1 text-center font-semibold">{s}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {['', ...form.dorsals].map((d) => (
+                      <tr key={d || '__blank__'}>
+                        <td className="whitespace-nowrap rounded-l-lg bg-[#F7F7F4] px-2 py-2 font-semibold">{d || 'Sin nombre/número'}</td>
+                        {SIZES.map((s, i) => (
+                          <td key={s} className={`bg-[#F7F7F4] px-1 py-1 ${i === SIZES.length - 1 ? 'rounded-r-lg' : ''}`}>
+                            <input
+                              className="a-field w-16 px-1 text-center text-base font-bold"
+                              type="number"
+                              inputMode="numeric"
+                              min="0"
+                              value={form.stock[variantKey(d, s)] ?? 0}
+                              onChange={(e) => setCell(d, s, e.target.value)}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
 
           {error && <ErrorBox message={error} />}

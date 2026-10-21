@@ -34,7 +34,7 @@ export function changeDueText(o: Pick<Order, 'currency' | 'total_usd' | 'total_c
 }
 
 export const totalStock = (p: Product) => p.variants.reduce((a, v) => a + v.stock, 0)
-export const sizesInStock = (p: Product) => p.variants.filter((v) => v.stock > 0).map((v) => v.size)
+export const sizesInStock = (p: Product) => [...new Set(p.variants.filter((v) => v.stock > 0).map((v) => v.size))]
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   pendiente: 'Por confirmar',

@@ -115,6 +115,7 @@ export default function Orders() {
                 <li key={i.id} className="flex justify-between gap-2">
                   <span>
                     {i.qty}× <b>{i.product_name}</b> · {i.size}
+                    {i.dorsal && ` · ${i.dorsal}`}
                   </span>
                 </li>
               ))}

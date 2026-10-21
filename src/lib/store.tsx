@@ -8,6 +8,8 @@ export interface CartItem {
   product_id: string
   name: string
   size: string
+  /** '' = sin dorsal */
+  dorsal: string
   image_url: string | null
   price_usd: number
   price_cop: number

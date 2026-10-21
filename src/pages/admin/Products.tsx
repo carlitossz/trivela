@@ -44,6 +44,7 @@ export default function Products() {
                   {usd(p.price_usd)} · {cop(p.price_cop)}
                 </span>
                 <span className="text-xs text-[#5C5C5C]">{sizes.length ? `Tallas: ${sizes.join(', ')}` : 'Agotada'}</span>
+                {p.dorsals.length > 0 && <span className="text-xs text-[#5C5C5C]">{p.dorsals.length} {p.dorsals.length === 1 ? 'dorsal' : 'dorsales'}</span>}
               </div>
             </Link>
           )

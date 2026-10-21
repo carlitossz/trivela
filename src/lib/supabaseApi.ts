@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Api, Order, PendingOrder, Product, ProductInput, Settings } from './types'
-import { SIZES } from './types'
+import { SIZES, variantKey } from './types'
 
 const PRODUCT_SELECT = '*, variants(*)'
 
@@ -9,7 +9,13 @@ function sortVariants(p: Product): Product {
     const i = (SIZES as readonly string[]).indexOf(s)
     return i === -1 ? 99 : i
   }
-  return { ...p, price_usd: Number(p.price_usd), price_cop: Number(p.price_cop), variants: [...(p.variants ?? [])].sort((a, b) => order(a.size) - order(b.size)) }
+  return {
+    ...p,
+    price_usd: Number(p.price_usd),
+    price_cop: Number(p.price_cop),
+    dorsals: p.dorsals ?? [],
+    variants: [...(p.variants ?? [])].sort((a, b) => (a.dorsal || '').localeCompare(b.dorsal || '') || order(a.size) - order(b.size))
+  }
 }
 
 function fail(error: { message: string } | null) {
@@ -152,19 +158,28 @@ export function createSupabaseApi(url: string, key: string): Api {
     },
 
     async saveProduct(input: ProductInput) {
-      const { stock, id, ...fields } = input
+      const { stock, id, dorsals, ...fields } = input
       let productId = id
       if (productId) {
-        const { error } = await sb.from('products').update(fields).eq('id', productId)
+        const { error } = await sb.from('products').update({ ...fields, dorsals }).eq('id', productId)
         fail(error)
       } else {
-        const { data, error } = await sb.from('products').insert(fields).select('id').single()
+        const { data, error } = await sb.from('products').insert({ ...fields, dorsals }).select('id').single()
         fail(error)
         productId = (data as { id: string }).id
       }
-      const rows = SIZES.map((size) => ({ product_id: productId, size, stock: Math.max(0, stock[size] ?? 0) }))
-      const { error } = await sb.from('variants').upsert(rows, { onConflict: 'product_id,size' })
+      const allowed = ['', ...dorsals]
+      const rows = allowed.flatMap((d) => SIZES.map((size) => ({ product_id: productId, size, dorsal: d, stock: Math.max(0, stock[variantKey(d, size)] ?? 0) })))
+      const { error } = await sb.from('variants').upsert(rows, { onConflict: 'product_id,size,dorsal' })
       fail(error)
+      // Si se quitó un dorsal de la lista, se borran sus filas de stock (si no, quedarían disponibles "fantasma")
+      const { data: existing, error: existErr } = await sb.from('variants').select('dorsal').eq('product_id', productId)
+      fail(existErr)
+      const orphans = [...new Set((existing ?? []).map((v: { dorsal: string }) => v.dorsal).filter((d: string) => !allowed.includes(d)))]
+      if (orphans.length) {
+        const { error: delErr } = await sb.from('variants').delete().eq('product_id', productId).in('dorsal', orphans)
+        fail(delErr)
+      }
       return productId!
     },
 

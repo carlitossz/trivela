@@ -4,7 +4,7 @@ import type { Delivery, OrderResult } from './types'
 interface MessageInput {
   storeName: string
   result: OrderResult
-  items: { name: string; size: string; qty: number }[]
+  items: { name: string; size: string; dorsal: string; qty: number }[]
   customerName: string
   customerPhone: string
   delivery: Delivery
@@ -21,7 +21,7 @@ export function orderMessage(m: MessageInput) {
   const lines = [
     `*Pedido ${m.result.code}* · ${m.storeName}`,
     '',
-    ...m.items.map((i) => `${i.qty}× ${i.name} · Talla ${i.size}`),
+    ...m.items.map((i) => `${i.qty}× ${i.name} · Talla ${i.size}${i.dorsal ? ` · ${i.dorsal}` : ''}`),
     '',
     `Entrega: ${m.delivery === 'pickup' ? 'Pickup' : 'Delivery'}`,
     ...(m.delivery === 'delivery' && m.address ? [`Dirección: ${m.address}`] : []),

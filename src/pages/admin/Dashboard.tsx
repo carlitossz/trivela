@@ -96,7 +96,7 @@ export default function Dashboard() {
                       {o.code} · {o.customer_name}
                     </p>
                     <p className="truncate text-xs text-[#5C5C5C]">
-                      {o.items.map((i) => `${i.product_name} ${i.size}`).join(', ')} · {timeAgo(o.created_at)}
+                      {o.items.map((i) => `${i.product_name} ${i.size}${i.dorsal ? ` (${i.dorsal})` : ''}`).join(', ')} · {timeAgo(o.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -129,7 +129,10 @@ export default function Dashboard() {
                   <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#F0F0EC]">
                     <JerseyImage src={p.image_url} alt="" className="h-8 w-full" />
                   </div>
-                  <span className="flex-1 font-semibold">{p.name}</span>
+                  <span className="flex-1 truncate font-semibold">
+                    {p.name}
+                    {v.dorsal && <span className="block truncate text-xs font-normal text-[#5C5C5C]">{v.dorsal}</span>}
+                  </span>
                   <span className="rounded-md bg-[#FFF1C2] px-2 py-0.5 text-xs font-bold text-[#5C4100]">{v.size}</span>
                 </div>
               ))

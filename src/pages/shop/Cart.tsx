@@ -44,7 +44,10 @@ export default function CartPage() {
                 </Link>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate text-sm font-bold">{i.name}</span>
-                  <span className="text-xs text-muted">Talla {i.size}</span>
+                  <span className="text-xs text-muted">
+                    Talla {i.size}
+                    {i.dorsal && ` · ${i.dorsal}`}
+                  </span>
                   <span className="text-sm font-bold">{usd(i.price_usd * i.qty)}</span>
                   {i.qty > stockOf(i.variant_id) && (
                     <span className="text-xs font-semibold text-[#F2A07A]">
