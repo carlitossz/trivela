@@ -61,7 +61,7 @@ export default function Catalog() {
 
         {featured && !query && (
           <section className="relative min-h-[190px] overflow-hidden rounded-[18px] border border-line bg-panel p-5">
-            <div key={featured.id} className="animate-hero-text relative z-[1] flex max-w-[60%] flex-col gap-2.5">
+            <div className="relative z-[1] flex max-w-[60%] flex-col gap-2.5">
               {featured.badge && (
                 <span className="self-start rounded-md bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-ink">{featured.badge}</span>
               )}
