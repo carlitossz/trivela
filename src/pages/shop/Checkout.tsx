@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ShopShell } from '../../components/ShopLayout'
 import { BackButton, Icon, PaymentDetailsBox, Spinner } from '../../components/ui'
@@ -33,6 +33,12 @@ export default function Checkout() {
   const [cashAmount, setCashAmount] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const detailsRef = useRef<HTMLDivElement>(null)
+
+  // Al elegir un método, la pantalla se desliza sola hasta sus datos para que no pasen desapercibidos
+  useEffect(() => {
+    if (method) detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [method])
 
   // El aviso de error se quita apenas el cliente corrige algo
   useEffect(() => {
@@ -195,24 +201,29 @@ export default function Checkout() {
               ))}
             </div>
           )}
-          {selected && !selected.cash && <PaymentDetailsBox note={selected.note} fields={selected.fields} cash={selected.cash} />}
-          {selected?.cash && (
-            <div className="flex flex-col gap-2 rounded-xl border border-line bg-panel2 p-3">
-              <span className="text-sm font-bold">¿Vas a pagar con billete grande?</span>
-              <span className="text-xs text-muted">Escribe cuánto traes y te decimos el vuelto. Si pagas exacto, déjalo vacío.</span>
-              <input
-                className="field"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                value={cashAmount}
-                onChange={(e) => setCashAmount(e.target.value)}
-                placeholder={`Total: ${total}`}
-              />
-              {changeDue != null && selected && (
-                <span className="rounded-lg bg-[#2A2410] px-3 py-2 text-sm font-bold text-[#F2D27A]">
-                  Te devolvemos {money(selected.currency, { usd: changeDue, cop: changeDue, bs: changeDue })} de vuelto.
-                </span>
+          {selected && (
+            <div key={method} ref={detailsRef} className="animate-reveal scroll-mt-4">
+              {selected.cash ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-line bg-panel2 p-3">
+                  <span className="text-sm font-bold">¿Vas a pagar con billete grande?</span>
+                  <span className="text-xs text-muted">Escribe cuánto traes y te decimos el vuelto. Si pagas exacto, déjalo vacío.</span>
+                  <input
+                    className="field"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                    placeholder={`Total: ${total}`}
+                  />
+                  {changeDue != null && (
+                    <span className="rounded-lg bg-[#2A2410] px-3 py-2 text-sm font-bold text-[#F2D27A]">
+                      Te devolvemos {money(selected.currency, { usd: changeDue, cop: changeDue, bs: changeDue })} de vuelto.
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <PaymentDetailsBox note={selected.note} fields={selected.fields} cash={selected.cash} />
               )}
             </div>
           )}

@@ -66,3 +66,18 @@
 .no-scrollbar {
   scrollbar-width: none;
 }
+
+/* Aviso visible: algo nuevo apareció en pantalla (ej. datos de pago al elegir el método) */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-reveal {
+  animation: reveal 0.3s ease-out;
+}
