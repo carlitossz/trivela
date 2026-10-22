@@ -98,18 +98,41 @@
   border-radius: 0.75rem;
 }
 
-/* Banner principal: la franela destacada rota con una entrada suave */
-@keyframes hero-image-in {
-  from {
+/* Banner principal: la franela destacada entra alternando de lado y luego
+   hace un acercamiento lento mientras está quieta (tipo documental) */
+@keyframes hero-image-in-right {
+  0% {
     opacity: 0;
     transform: translateX(26px) rotate(-8deg) scale(0.9);
   }
-  to {
+  15% {
     opacity: 1;
     transform: translateX(0) rotate(-8deg) scale(1);
   }
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotate(-8deg) scale(1.07);
+  }
 }
-.animate-hero-image {
-  animation: hero-image-in 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+@keyframes hero-image-in-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-26px) rotate(-8deg) scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(0) rotate(-8deg) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) rotate(-8deg) scale(1.07);
+  }
+}
+.animate-hero-image-right {
+  animation: hero-image-in-right 4.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+.animate-hero-image-left {
+  animation: hero-image-in-left 4.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   will-change: transform, opacity;
 }

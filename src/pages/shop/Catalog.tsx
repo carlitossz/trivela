@@ -72,7 +72,12 @@ export default function Catalog() {
                 </p>
               )}
             </div>
-            <img key={featured.id} src={featured.image_url!} alt="" className="animate-hero-image absolute -bottom-6 -right-3 w-[150px] -rotate-[8deg]" />
+            <img
+              key={featured.id}
+              src={featured.image_url!}
+              alt=""
+              className={`absolute -bottom-6 -right-3 w-[150px] -rotate-[8deg] ${heroIndex % 2 === 0 ? 'animate-hero-image-right' : 'animate-hero-image-left'}`}
+            />
             {featuredList.length > 1 && (
               <div className="absolute bottom-3 left-5 z-[1] flex gap-1.5" role="tablist" aria-label="Franelas destacadas">
                 {featuredList.map((p, i) => (
