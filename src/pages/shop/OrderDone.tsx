@@ -1,9 +1,8 @@
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { ShopShell } from '../../components/ShopLayout'
-import { Icon, PaymentDetailsBox } from '../../components/ui'
+import { Icon } from '../../components/ui'
 import { hoursText } from '../../lib/format'
 import { useSettings } from '../../lib/store'
-import type { PaymentField } from '../../lib/types'
 import { waLink } from '../../lib/whatsapp'
 import { LAST_ORDER_KEY } from './Checkout'
 
@@ -11,8 +10,6 @@ interface Done {
   code: string
   message: string
   total: string
-  paymentNote: string
-  paymentFields: PaymentField[]
   paymentCash: boolean
   reserveHours?: number
 }
@@ -59,7 +56,12 @@ export default function OrderDone() {
                 <span className="text-sm font-bold">Último paso: envíanos el pedido por WhatsApp</span>
                 <span className="text-[13px] text-soft">Ahí te confirmamos el pago y la entrega.</span>
               </div>
-              <PaymentDetailsBox note={done.paymentNote} fields={done.paymentFields} cash={done.paymentCash} />
+              {!done.paymentCash && (
+                <p className="flex items-start gap-1.5 rounded-lg bg-[#132B1C] px-3 py-2 text-[12px] font-semibold leading-snug text-[#7FDB9C]">
+                  <Icon name="wa" size={14} className="mt-0.5 shrink-0" />
+                  Después de pagar, envía la captura del comprobante por WhatsApp para que te confirmemos más rápido.
+                </p>
+              )}
               {!!done.reserveHours && (
                 <span className="text-[13px] font-semibold text-[#F2D27A]">
                   Tus franelas quedan apartadas por {hoursText(done.reserveHours)}. Si no se confirma el pago en ese tiempo, se liberan para otros clientes.

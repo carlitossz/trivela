@@ -97,17 +97,17 @@ export default function ProductDetail() {
             {p.badge && <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-ink">{p.badge}</span>}
             {p.collection && <span className="rounded-md border border-line2 px-2 py-0.5 text-[11px] font-semibold text-soft">{p.collection}</span>}
           </div>
-          <h1 className="text-[28px] font-extrabold uppercase leading-tight">{p.name}</h1>
+          <h1 className="text-[32px] font-extrabold uppercase leading-tight">{p.name}</h1>
           <p className="flex items-baseline gap-2.5">
-            <span className="text-[28px] font-extrabold">{usd(p.price_usd)}</span>
-            <span className="text-[15px] font-medium text-soft">o {cop(p.price_cop)}</span>
+            <span className="text-[26px] font-extrabold">{usd(p.price_usd)}</span>
+            <span className="text-[13px] font-medium text-soft">o {cop(p.price_cop)}</span>
           </p>
-          {p.description && <p className="text-sm leading-relaxed text-soft">{p.description}</p>}
+          {p.description && <p className="text-[13px] leading-relaxed text-soft">{p.description}</p>}
         </div>
 
         {showDorsalPicker && (
           <section className="flex flex-col gap-2.5">
-            <h2 className="text-[15px] font-bold">Dorsal</h2>
+            <h2 className="text-[16px] font-extrabold">Dorsal</h2>
             <div role="radiogroup" aria-label="Dorsal" className="flex flex-wrap gap-2">
               {dorsalOptions.map((d) => (
                 <button
@@ -128,7 +128,7 @@ export default function ProductDetail() {
         )}
 
         <section className="flex flex-col gap-2.5">
-          <h2 className="text-[15px] font-bold">Talla</h2>
+          <h2 className="text-[16px] font-extrabold">{showDorsalPicker ? `Talla para "${dorsal || 'Sin nombre/número'}"` : 'Talla'}</h2>
           <div role="radiogroup" aria-label="Talla" className="grid grid-cols-5 gap-2">
             {sizesForDorsal.map((v) => {
               const out = v.stock === 0
@@ -166,7 +166,7 @@ export default function ProductDetail() {
         {variant && variant.stock === 0 && (
           <div className="flex flex-col gap-3 rounded-2xl border border-line2 bg-panel p-4">
             <span className="text-sm font-bold">No tenemos la {picked} ahora</span>
-            <span className="text-[13px] text-soft">Escríbenos y te avisamos apenas llegue.</span>
+            <span className="text-xs text-soft">Escríbenos y te avisamos apenas llegue.</span>
             <a href={waLink(settings?.whatsapp ?? '', askText)} target="_blank" rel="noreferrer" className="btn-wa h-12 text-sm">
               <Icon name="wa" /> Preguntar por WhatsApp
             </a>
@@ -175,7 +175,7 @@ export default function ProductDetail() {
 
         {settings && (
           // Solo información, sin cuadros: la entrega y el pago se eligen en el checkout
-          <ul className="flex flex-col gap-2.5 border-t border-line pt-5 text-[13px] leading-snug text-soft">
+          <ul className="flex flex-col gap-2.5 border-t border-line pt-5 text-[12px] leading-snug text-soft">
             <li className="flex gap-2.5">
               <Icon name="truck" size={18} className="mt-px shrink-0 text-white" />
               <span>

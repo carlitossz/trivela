@@ -85,8 +85,6 @@ export default function Checkout() {
         code: result.code,
         message,
         total: money(result.currency, { usd: result.total_usd, cop: result.total_cop, bs: result.total_bs }),
-        paymentNote: selected.note,
-        paymentFields: selected.fields,
         paymentCash: selected.cash,
         reserveHours: settings?.reserve_hours ?? 0
       }
@@ -114,10 +112,10 @@ export default function Checkout() {
       <form onSubmit={submit} className="flex flex-col gap-6 px-5 pb-44 pt-2" noValidate>
         <section className="rounded-2xl border border-line bg-panel px-4 py-1">
           {cart.items.map((i) => (
-            <div key={i.variant_id} className="flex items-center justify-between gap-3 border-b border-[#262626] py-3 text-sm last:border-0">
+            <div key={i.variant_id} className="flex items-center justify-between gap-3 border-b border-[#262626] py-3 last:border-0">
               <span>
-                <span className="font-bold">{i.qty}× {i.name}</span>
-                <span className="text-muted">
+                <span className="text-sm font-bold">{i.qty}× {i.name}</span>
+                <span className="text-xs text-muted">
                   {' '}· Talla {i.size}
                   {i.dorsal && ` · ${i.dorsal}`}
                 </span>
@@ -130,7 +128,7 @@ export default function Checkout() {
         </section>
 
         <fieldset className="flex flex-col gap-2.5">
-          <legend className="mb-2.5 text-[15px] font-bold">¿Cómo la recibes?</legend>
+          <legend className="mb-2.5 text-[16px] font-extrabold">¿Cómo la recibes?</legend>
           <div className="grid grid-cols-2 gap-2">
             {(
               [
@@ -159,7 +157,7 @@ export default function Checkout() {
         </fieldset>
 
         <fieldset className="flex flex-col gap-2.5">
-          <legend className="mb-2.5 text-[15px] font-bold">Tus datos</legend>
+          <legend className="mb-2.5 text-[16px] font-extrabold">Tus datos</legend>
           <label className="flex flex-col gap-1 text-xs font-semibold text-[#D4D4D4]">
             Nombre
             <input className="field" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Tu nombre" />
@@ -171,7 +169,7 @@ export default function Checkout() {
         </fieldset>
 
         <fieldset className="flex flex-col gap-2.5">
-          <legend className="mb-2.5 text-[15px] font-bold">Método de pago</legend>
+          <legend className="mb-2.5 text-[16px] font-extrabold">Método de pago</legend>
           {!settings ? (
             <Spinner />
           ) : (
@@ -197,10 +195,11 @@ export default function Checkout() {
               ))}
             </div>
           )}
-          {selected && <PaymentDetailsBox note={selected.note} fields={selected.fields} cash={selected.cash} />}
+          {selected && !selected.cash && <PaymentDetailsBox note={selected.note} fields={selected.fields} cash={selected.cash} />}
           {selected?.cash && (
-            <label className="flex flex-col gap-1 text-xs font-semibold text-[#D4D4D4]">
-              ¿Con cuánto vas a pagar? (opcional)
+            <div className="flex flex-col gap-2 rounded-xl border border-line bg-panel2 p-3">
+              <span className="text-sm font-bold">¿Vas a pagar con billete grande?</span>
+              <span className="text-xs text-muted">Escribe cuánto traes y te decimos el vuelto. Si pagas exacto, déjalo vacío.</span>
               <input
                 className="field"
                 type="number"
@@ -208,13 +207,14 @@ export default function Checkout() {
                 min="0"
                 value={cashAmount}
                 onChange={(e) => setCashAmount(e.target.value)}
-                placeholder={`Ej. si el total es ${total}, escribe con cuánto pagas`}
+                placeholder={`Total: ${total}`}
               />
-              <span className="font-normal text-soft">Si vas a pagar con un billete más grande, dinos con cuánto para que te tengan el vuelto listo.</span>
               {changeDue != null && selected && (
-                <span className="font-semibold text-[#F2D27A]">Te deberían devolver {money(selected.currency, { usd: changeDue, cop: changeDue, bs: changeDue })} de vuelto.</span>
+                <span className="rounded-lg bg-[#2A2410] px-3 py-2 text-sm font-bold text-[#F2D27A]">
+                  Te devolvemos {money(selected.currency, { usd: changeDue, cop: changeDue, bs: changeDue })} de vuelto.
+                </span>
               )}
-            </label>
+            </div>
           )}
         </fieldset>
 
@@ -227,11 +227,11 @@ export default function Checkout() {
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-[#141414]">
           <div className="mx-auto flex max-w-[34rem] flex-col gap-2.5 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
             <div className="flex items-baseline justify-between">
-              <span className="text-[13px] text-soft">
+              <span className="text-xs text-soft">
                 {cart.count} {cart.count === 1 ? 'franela' : 'franelas'}
                 {delivery === 'delivery' ? ' · delivery aparte' : ''}
               </span>
-              <span className="text-[22px] font-extrabold">{total}</span>
+              <span className="text-[24px] font-extrabold">{total}</span>
             </div>
             <button type="submit" disabled={sending} className="btn-wa w-full">
               {sending ? <Spinner /> : <Icon name="check" />}

@@ -35,6 +35,8 @@ export function changeDueText(o: Pick<Order, 'currency' | 'total_usd' | 'total_c
 
 export const totalStock = (p: Product) => p.variants.reduce((a, v) => a + v.stock, 0)
 export const sizesInStock = (p: Product) => [...new Set(p.variants.filter((v) => v.stock > 0).map((v) => v.size))]
+/** Dorsales (nombre y número) con al menos una unidad disponible en alguna talla */
+export const dorsalsInStock = (p: Product) => [...new Set(p.variants.filter((v) => v.dorsal && v.stock > 0).map((v) => v.dorsal))]
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   pendiente: 'Por confirmar',

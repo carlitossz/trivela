@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ShopShell, WhatsAppFab } from '../../components/ShopLayout'
 import { Icon, JerseyImage, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
-import { cop, sizesInStock, totalStock, usd } from '../../lib/format'
+import { cop, dorsalsInStock, sizesInStock, totalStock, usd } from '../../lib/format'
 import { useAsync } from '../../lib/store'
 import { SIZES, type Product } from '../../lib/types'
 
@@ -55,10 +55,10 @@ export default function Catalog() {
               {featured.badge && (
                 <span className="self-start rounded-md bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-ink">{featured.badge}</span>
               )}
-              <h1 className="text-[28px] font-extrabold uppercase leading-[1.02]">{collection}</h1>
+              <h1 className="text-[30px] font-extrabold uppercase leading-[1.02]">{collection}</h1>
               {samePrice && (
-                <p className="text-base font-bold">
-                  {usd(price!.price_usd)} <span className="text-[13px] font-medium text-soft">· {cop(price!.price_cop)}</span>
+                <p className="text-[17px] font-extrabold">
+                  {usd(price!.price_usd)} <span className="text-xs font-medium text-soft">· {cop(price!.price_cop)}</span>
                 </p>
               )}
             </div>
@@ -110,7 +110,7 @@ export default function Catalog() {
         {products && (
           <>
             <div className="flex items-baseline justify-between">
-              <h2 className="text-lg font-bold">{shown.filter((p) => totalStock(p) > 0).length} disponibles</h2>
+              <h2 className="text-xl font-extrabold">{shown.filter((p) => totalStock(p) > 0).length} disponibles</h2>
               {(size || kit !== 'Todas' || query) && (
                 <button
                   type="button"
@@ -148,6 +148,7 @@ export default function Catalog() {
 
 function ProductCard({ product: p }: { product: Product }) {
   const sizes = sizesInStock(p)
+  const dorsals = dorsalsInStock(p)
   const soldOut = sizes.length === 0
   return (
     <Link to={`/franela/${p.id}`} className={`flex flex-col gap-2 rounded-2xl border border-line bg-panel p-2 pb-3 ${soldOut ? 'opacity-55' : ''}`}>
@@ -160,18 +161,28 @@ function ProductCard({ product: p }: { product: Product }) {
         )}
       </div>
       <div className="flex flex-col gap-1 px-1">
-        <span className="text-[13px] font-bold leading-tight">{p.name}</span>
-        {p.collection && <span className="text-[11px] text-muted">{p.collection}</span>}
-        <span className="text-base font-bold">
-          {usd(p.price_usd)} <span className="text-[11px] font-medium text-muted">{cop(p.price_cop)}</span>
+        <span className="text-[14px] font-extrabold leading-tight">{p.name}</span>
+        {p.collection && <span className="text-[10px] font-medium text-muted">{p.collection}</span>}
+        <span className="text-[17px] font-extrabold">
+          {usd(p.price_usd)} <span className="text-[10px] font-medium text-muted">{cop(p.price_cop)}</span>
         </span>
-        <div className="flex flex-wrap gap-1">
-          {sizes.map((s) => (
-            <span key={s} className="grid h-[22px] min-w-[26px] place-items-center rounded-md border border-[#5A5A5A] px-1 text-[11px] font-bold">
-              {s}
+        {dorsals.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="grid h-[22px] place-items-center rounded-md bg-white px-1.5 text-[10px] font-bold uppercase tracking-wide text-ink">Con dorsal</span>
+            <span className="truncate text-[11px] text-muted">
+              {dorsals.slice(0, 2).join(' · ')}
+              {dorsals.length > 2 ? ` +${dorsals.length - 2}` : ''}
             </span>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {sizes.map((s) => (
+              <span key={s} className="grid h-[22px] min-w-[26px] place-items-center rounded-md border border-[#5A5A5A] px-1 text-[11px] font-bold">
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   )
