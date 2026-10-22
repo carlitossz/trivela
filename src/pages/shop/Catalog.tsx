@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopShell, WhatsAppFab } from '../../components/ShopLayout'
 import { Icon, JerseyImage, Spinner } from '../../components/ui'
@@ -29,7 +29,17 @@ export default function Catalog() {
       .sort((a, b) => Number(totalStock(b) > 0) - Number(totalStock(a) > 0))
   }, [products, kit, size, query])
 
-  const featured = (products ?? []).find((p) => totalStock(p) > 0 && p.image_url)
+  // Hasta 5 franelas para rotar en el banner principal
+  const featuredList = useMemo(() => (products ?? []).filter((p) => totalStock(p) > 0 && p.image_url).slice(0, 5), [products])
+  const [heroIndex, setHeroIndex] = useState(0)
+
+  useEffect(() => {
+    if (featuredList.length <= 1) return
+    const t = setInterval(() => setHeroIndex((i) => (i + 1) % featuredList.length), 4500)
+    return () => clearInterval(t)
+  }, [featuredList.length])
+
+  const featured = featuredList[heroIndex % featuredList.length]
   const collection = featured?.collection || 'Nuevas llegadas'
   const price = products?.[0]
   const samePrice = !!products?.length && products.every((p) => p.price_usd === price!.price_usd && p.price_cop === price!.price_cop)
@@ -51,7 +61,7 @@ export default function Catalog() {
 
         {featured && !query && (
           <section className="relative min-h-[190px] overflow-hidden rounded-[18px] border border-line bg-panel p-5">
-            <div className="relative z-[1] flex max-w-[60%] flex-col gap-2.5">
+            <div key={featured.id} className="animate-hero-text relative z-[1] flex max-w-[60%] flex-col gap-2.5">
               {featured.badge && (
                 <span className="self-start rounded-md bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-ink">{featured.badge}</span>
               )}
@@ -62,7 +72,22 @@ export default function Catalog() {
                 </p>
               )}
             </div>
-            <img src={featured.image_url!} alt="" className="absolute -bottom-6 -right-3 w-[150px] -rotate-[8deg]" />
+            <img key={featured.id} src={featured.image_url!} alt="" className="animate-hero-image absolute -bottom-6 -right-3 w-[150px] -rotate-[8deg]" />
+            {featuredList.length > 1 && (
+              <div className="absolute bottom-3 left-5 z-[1] flex gap-1.5" role="tablist" aria-label="Franelas destacadas">
+                {featuredList.map((p, i) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={i === heroIndex}
+                    aria-label={`Mostrar ${p.name}`}
+                    onClick={() => setHeroIndex(i)}
+                    className={`h-1.5 rounded-full transition-all ${i === heroIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/35'}`}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         )}
 
