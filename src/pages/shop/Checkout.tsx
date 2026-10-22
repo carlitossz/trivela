@@ -36,8 +36,11 @@ export default function Checkout() {
   const detailsRef = useRef<HTMLDivElement>(null)
 
   // Al elegir un método, la pantalla se desliza sola hasta sus datos para que no pasen desapercibidos
+  // (centrado siempre, no solo "lo mínimo necesario", para que el movimiento se note incluso si ya cabía en pantalla)
   useEffect(() => {
-    if (method) detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    if (!method) return
+    const t = setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 30)
+    return () => clearTimeout(t)
   }, [method])
 
   // El aviso de error se quita apenas el cliente corrige algo
