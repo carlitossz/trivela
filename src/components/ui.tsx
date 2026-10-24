@@ -1,26 +1,13 @@
-import { useState, type ReactNode, type SVGProps } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { api, configError } from '../lib/api'
 
 export function Logo({ size = 20, className = '' }: { size?: number; className?: string }) {
   return (
     <span className={`flex flex-col font-extrabold leading-[0.9] tracking-wide ${className}`} style={{ fontSize: size }}>
-      <span className="flex items-center gap-[3px]">
-        TRI
-        <Ball width={size * 0.78} height={size * 0.78} />
-      </span>
+      <span>TRI</span>
       <span>VELA</span>
     </span>
-  )
-}
-
-/** Balón simple (círculo blanco + pentágono oscuro): fijo a blanco/negro para que se lea igual sobre fondo oscuro o claro */
-function Ball(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-      <circle cx="12" cy="12" r="10" fill="#fff" stroke="#111" strokeWidth={1} />
-      <path d="M12 6.2 15.9 9 14.4 13.6 9.6 13.6 8.1 9Z" fill="#111" />
-    </svg>
   )
 }
 
