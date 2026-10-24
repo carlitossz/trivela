@@ -14,20 +14,12 @@ export function Logo({ size = 20, className = '' }: { size?: number; className?:
   )
 }
 
-/** Balón clásico (blanco + pentágono oscuro): fijo a blanco/negro para que se lea igual sobre fondo oscuro o claro */
+/** Balón simple (círculo blanco + pentágono oscuro): fijo a blanco/negro para que se lea igual sobre fondo oscuro o claro */
 function Ball(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-      <circle cx="12" cy="12" r="10" fill="#fff" stroke="#111" strokeWidth={1.1} />
-      <polygon points="12,6.4 16.1,9.4 14.5,14.2 9.5,14.2 7.9,9.4" fill="#111" stroke="#111" strokeWidth={0.6} strokeLinejoin="round" />
-      <path
-        d="M12 2.3v4.1M20.7 8.5l-4.6 0.9M18.8 18.3l-2.7-4.1M5.2 18.3l2.7-4.1M3.3 8.5l4.6 0.9"
-        stroke="#111"
-        strokeWidth={1.3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
+      <circle cx="12" cy="12" r="10" fill="#fff" stroke="#111" strokeWidth={1} />
+      <path d="M12 6.2 15.9 9 14.4 13.6 9.6 13.6 8.1 9Z" fill="#111" />
     </svg>
   )
 }
