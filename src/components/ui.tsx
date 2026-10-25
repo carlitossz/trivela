@@ -11,7 +11,7 @@ export function Logo({ size = 20, className = '' }: { size?: number; className?:
   )
 }
 
-type IconName = 'back' | 'bag' | 'search' | 'wa' | 'plus' | 'minus' | 'trash' | 'check' | 'x' | 'home' | 'box' | 'shirt' | 'list' | 'gear' | 'out' | 'up' | 'edit' | 'refresh' | 'pin' | 'truck' | 'card' | 'chevron' | 'copy'
+type IconName = 'back' | 'bag' | 'search' | 'wa' | 'plus' | 'minus' | 'trash' | 'check' | 'x' | 'home' | 'box' | 'shirt' | 'list' | 'gear' | 'out' | 'up' | 'edit' | 'refresh' | 'pin' | 'truck' | 'card' | 'chevron' | 'copy' | 'chart' | 'download'
 
 const PATHS: Record<IconName, ReactNode> = {
   back: <path d="M15 5l-7 7 7 7" />,
@@ -91,6 +91,18 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <rect x="9" y="9" width="12" height="12" rx="2" />
       <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+    </>
+  ),
+  chart: (
+    <>
+      <path d="M4 20h16" />
+      <path d="M7 20v-6M12 20V9M17 20v-10" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 3v12M7 10l5 5 5-5" />
+      <path d="M4 19h16" />
     </>
   )
 }

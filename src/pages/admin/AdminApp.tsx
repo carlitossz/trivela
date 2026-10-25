@@ -10,6 +10,7 @@ import Inventory from './Inventory'
 import Orders from './Orders'
 import ProductForm from './ProductForm'
 import Products from './Products'
+import Reports from './Reports'
 import SettingsPage from './SettingsPage'
 
 const NAV = [
@@ -17,6 +18,7 @@ const NAV = [
   { to: '/admin/pedidos', label: 'Pedidos', icon: 'list', end: false },
   { to: '/admin/inventario', label: 'Inventario', icon: 'box', end: false },
   { to: '/admin/franelas', label: 'Franelas', icon: 'shirt', end: false },
+  { to: '/admin/reportes', label: 'Reportes', icon: 'chart', end: false },
   { to: '/admin/ajustes', label: 'Ajustes', icon: 'gear', end: false }
 ] as const
 
@@ -114,6 +116,7 @@ function AdminShell({ email, onLogout }: { email: string; onLogout: () => void }
               <Route path="franelas" element={<Products />} />
               <Route path="franelas/nueva" element={<ProductForm />} />
               <Route path="franelas/:id" element={<ProductForm />} />
+              <Route path="reportes" element={<Reports />} />
               <Route path="ajustes" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Routes>
@@ -122,7 +125,7 @@ function AdminShell({ email, onLogout }: { email: string; onLogout: () => void }
       </div>
 
       {/* Menú inferior (teléfono) */}
-      <nav aria-label="Panel" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-rule bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Panel" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-rule bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
         {NAV.map((n) => (
           <NavLink
             key={n.to}
