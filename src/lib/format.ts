@@ -18,7 +18,7 @@ export function money(currency: Currency, totals: { usd: number; cop: number; bs
 export const orderTotal = (o: Pick<Order, 'currency' | 'total_usd' | 'total_cop' | 'total_bs'>) =>
   money(o.currency, { usd: o.total_usd, cop: o.total_cop, bs: o.total_bs })
 
-const fmtFor: Record<Currency, (n: number) => string> = { USD: usd, COP: cop, BS: bs }
+export const fmtFor: Record<Currency, (n: number) => string> = { USD: usd, COP: cop, BS: bs }
 
 /** Lo que el cliente dijo que trae en efectivo, en la moneda del pedido (o null si no aplica) */
 export function cashAmountText(o: Pick<Order, 'currency' | 'cash_amount'>) {

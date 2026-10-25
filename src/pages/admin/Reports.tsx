@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { Icon, Spinner } from '../../components/ui'
 import { api } from '../../lib/api'
-import { money } from '../../lib/format'
+import { fmtFor, usd } from '../../lib/format'
 import { useAsync } from '../../lib/store'
+import type { Currency, Order, OrderItem } from '../../lib/types'
 import { ErrorBox, PageTitle } from './shared'
 
 const MONTH_LABEL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const CURRENCY_LABEL: Record<Currency, string> = { USD: 'Dólares', COP: 'Pesos', BS: 'Bolívares' }
 
 /** "2026-05" a partir de una fecha ISO, en hora local */
 function monthKey(iso: string) {
@@ -14,9 +16,39 @@ function monthKey(iso: string) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+/** Cuánto costó esa línea del pedido, en la moneda real con la que se pagó el pedido */
+function itemAmount(o: Order, i: OrderItem): { amount: number; currency: Currency } {
+  if (o.currency === 'COP') return { amount: Math.round(i.unit_cop * i.qty), currency: 'COP' }
+  if (o.currency === 'BS' && o.total_bs != null && o.total_usd > 0) {
+    const usdSub = i.unit_usd * i.qty
+    return { amount: Math.round(usdSub * (o.total_bs / o.total_usd) * 100) / 100, currency: 'BS' }
+  }
+  return { amount: Math.round(i.unit_usd * i.qty * 100) / 100, currency: 'USD' }
+}
+
+interface Row {
+  code: string
+  created_at: string
+  product_name: string
+  size: string
+  dorsal: string
+  badge: string
+  qty: number
+  customer: string
+  amount: number
+  currency: Currency
+}
+
 export default function Reports() {
   const { data: orders, error, loading, reload } = useAsync(() => api.listOrders())
+  const { data: products } = useAsync(() => api.listProducts({ includeInactive: true }))
   const [month, setMonth] = useState(() => monthKey(new Date().toISOString()))
+
+  const badgeByProduct = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const p of products ?? []) m.set(p.id, p.badge)
+    return m
+  }, [products])
 
   // Solo cuenta como venta real lo pagado o entregado; pendiente y cancelado no
   const sold = useMemo(
@@ -25,20 +57,28 @@ export default function Reports() {
   )
 
   const totalUsd = sold.reduce((a, o) => a + o.total_usd, 0)
-  const totalCop = sold.reduce((a, o) => a + o.total_cop, 0)
 
-  const lines = useMemo(() => {
-    const map = new Map<string, { name: string; size: string; dorsal: string; qty: number }>()
+  const rows: Row[] = useMemo(() => {
+    const out: Row[] = []
     for (const o of sold) {
       for (const i of o.items) {
-        const key = `${i.product_name}\u0001${i.size}\u0001${i.dorsal}`
-        const cur = map.get(key)
-        if (cur) cur.qty += i.qty
-        else map.set(key, { name: i.product_name, size: i.size, dorsal: i.dorsal, qty: i.qty })
+        const { amount, currency } = itemAmount(o, i)
+        out.push({
+          code: o.code,
+          created_at: o.created_at,
+          product_name: i.product_name,
+          size: i.size,
+          dorsal: i.dorsal,
+          badge: (i.product_id && badgeByProduct.get(i.product_id)) || '',
+          qty: i.qty,
+          customer: o.customer_name,
+          amount,
+          currency
+        })
       }
     }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name) || a.size.localeCompare(b.size) || a.dorsal.localeCompare(b.dorsal))
-  }, [sold])
+    return out.sort((a, b) => a.created_at.localeCompare(b.created_at))
+  }, [sold, badgeByProduct])
 
   const [y, m] = month.split('-')
   const monthLabel = `${MONTH_LABEL[Number(m) - 1]} ${y}`
@@ -48,10 +88,12 @@ export default function Reports() {
     const resumen = [
       ['Mes', monthLabelCap],
       ['Pedidos vendidos (pagados o entregados)', sold.length],
-      ['Total en USD', Number(totalUsd.toFixed(2))],
-      ['Total en COP', totalCop]
+      ['Total en dólares', Number(totalUsd.toFixed(2))]
     ]
-    const detalle = [['Franela', 'Talla', 'Dorsal', 'Cantidad vendida'], ...lines.map((l) => [l.name, l.size, l.dorsal || 'Sin nombre/número', l.qty])]
+    const detalle = [
+      ['Pedido', 'Franela', 'Talla', 'Dorsal y jugador', 'Tipo', 'Cantidad', 'Cliente', 'Monto', 'Moneda'],
+      ...rows.map((r) => [r.code, r.product_name, r.size, r.dorsal || 'Sin nombre/número', r.badge || '—', r.qty, r.customer, r.amount, CURRENCY_LABEL[r.currency]])
+    ]
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), 'Resumen')
@@ -61,7 +103,7 @@ export default function Reports() {
 
   return (
     <>
-      <PageTitle title="Reportes" subtitle="Lo vendido de verdad: pedidos ya pagados o entregados, mes por mes." />
+      <PageTitle title="Reportes" subtitle="Lo vendido de verdad: pedidos ya pagados o entregados, mes por mes, venta por venta." />
 
       <div className="mb-5 flex flex-wrap items-end gap-3">
         <label className="a-label">
@@ -85,8 +127,8 @@ export default function Reports() {
           <div className="mb-5 grid gap-3 sm:grid-cols-2">
             <div className="a-card flex flex-col gap-0.5 p-4">
               <span className="text-xs font-semibold text-[#5C5C5C]">Total vendido en {monthLabel}</span>
-              <p className="text-2xl font-extrabold">{money('USD', { usd: totalUsd, cop: totalCop, bs: null })}</p>
-              <span className="text-xs text-[#5C5C5C]">o {money('COP', { usd: totalUsd, cop: totalCop, bs: null })}</span>
+              <p className="text-2xl font-extrabold">{usd(totalUsd)}</p>
+              <span className="text-xs text-[#5C5C5C]">Sumado en dólares; abajo sale cada venta en su moneda real.</span>
             </div>
             <div className="a-card flex flex-col gap-0.5 p-4">
               <span className="text-xs font-semibold text-[#5C5C5C]">Pedidos vendidos</span>
@@ -95,26 +137,34 @@ export default function Reports() {
             </div>
           </div>
 
-          {lines.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="a-card p-6 text-sm text-[#5C5C5C]">No hay ventas pagadas o entregadas en {monthLabel}.</div>
           ) : (
             <div className="a-card overflow-x-auto p-0">
-              <table className="w-full min-w-[480px] text-sm">
+              <table className="w-full min-w-[760px] text-sm">
                 <thead>
                   <tr className="border-b border-[#EEEEEA] text-left text-xs text-[#5C5C5C]">
+                    <th className="px-4 py-3 font-semibold">Pedido</th>
                     <th className="px-4 py-3 font-semibold">Franela</th>
                     <th className="px-4 py-3 font-semibold">Talla</th>
                     <th className="px-4 py-3 font-semibold">Dorsal</th>
-                    <th className="px-4 py-3 text-right font-semibold">Cantidad</th>
+                    <th className="px-4 py-3 font-semibold">Tipo</th>
+                    <th className="px-4 py-3 text-right font-semibold">Cant.</th>
+                    <th className="px-4 py-3 font-semibold">Cliente</th>
+                    <th className="px-4 py-3 text-right font-semibold">Monto</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((l, i) => (
+                  {rows.map((r, i) => (
                     <tr key={i} className="border-b border-[#F3F3F0] last:border-0">
-                      <td className="px-4 py-2.5 font-semibold">{l.name}</td>
-                      <td className="px-4 py-2.5">{l.size}</td>
-                      <td className="px-4 py-2.5 text-[#5C5C5C]">{l.dorsal || '—'}</td>
-                      <td className="px-4 py-2.5 text-right font-bold">{l.qty}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-[#5C5C5C]">{r.code}</td>
+                      <td className="px-4 py-2.5 font-semibold">{r.product_name}</td>
+                      <td className="px-4 py-2.5">{r.size}</td>
+                      <td className="px-4 py-2.5 text-[#5C5C5C]">{r.dorsal || '—'}</td>
+                      <td className="px-4 py-2.5 text-[#5C5C5C]">{r.badge || '—'}</td>
+                      <td className="px-4 py-2.5 text-right font-bold">{r.qty}</td>
+                      <td className="px-4 py-2.5">{r.customer}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-right font-bold">{fmtFor[r.currency](r.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
