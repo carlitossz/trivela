@@ -85,6 +85,8 @@ export interface OrderItem {
   unit_cop: number
 }
 
+export type OrderChannel = 'tienda' | 'externa'
+
 export interface Order {
   id: string
   code: string
@@ -99,6 +101,8 @@ export interface Order {
   total_bs: number | null
   cash_amount: number | null
   status: OrderStatus
+  /** 'externa' = el admin la registró a mano, pasó fuera de la app */
+  channel: OrderChannel
   notes: string
   created_at: string
   items: OrderItem[]
@@ -123,6 +127,15 @@ export interface OrderResult {
   total_cop: number
   total_bs: number | null
   currency: Currency
+}
+
+/** Venta que pasó fuera de la app, registrada a mano por el admin */
+export interface ExternalSaleInput {
+  customer_name: string
+  currency: Currency
+  payment_method: string
+  notes: string
+  items: { variant_id: string; qty: number }[]
 }
 
 /** Datos para crear o editar una franela desde el panel */
@@ -156,6 +169,7 @@ export interface Api {
   listOrders(): Promise<Order[]>
   /** Pedidos por confirmar, sin detalle: lo usa el aviso de pedidos nuevos */
   pendingOrders(): Promise<PendingOrder[]>
+  createExternalSale(sale: ExternalSaleInput): Promise<OrderResult>
   setOrderStatus(orderId: string, status: OrderStatus): Promise<void>
   setStock(variantId: string, stock: number): Promise<void>
   saveProduct(input: ProductInput): Promise<string>

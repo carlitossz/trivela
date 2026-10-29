@@ -6,6 +6,7 @@ import { DEMO_PASSWORD } from '../../lib/demoApi'
 import { errorMessage } from '../../lib/format'
 import Dashboard from './Dashboard'
 import { OrderAlertsProvider, useOrderAlerts } from './orderAlerts'
+import ExternalSale from './ExternalSale'
 import Inventory from './Inventory'
 import Orders from './Orders'
 import ProductForm from './ProductForm'
@@ -18,6 +19,7 @@ const NAV = [
   { to: '/admin/pedidos', label: 'Pedidos', icon: 'list', end: false },
   { to: '/admin/inventario', label: 'Inventario', icon: 'box', end: false },
   { to: '/admin/franelas', label: 'Franelas', icon: 'shirt', end: false },
+  { to: '/admin/externas', label: 'Externas', icon: 'bag', end: false },
   { to: '/admin/reportes', label: 'Reportes', icon: 'chart', end: false },
   { to: '/admin/ajustes', label: 'Ajustes', icon: 'gear', end: false }
 ] as const
@@ -116,6 +118,7 @@ function AdminShell({ email, onLogout }: { email: string; onLogout: () => void }
               <Route path="franelas" element={<Products />} />
               <Route path="franelas/nueva" element={<ProductForm />} />
               <Route path="franelas/:id" element={<ProductForm />} />
+              <Route path="externas" element={<ExternalSale />} />
               <Route path="reportes" element={<Reports />} />
               <Route path="ajustes" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
@@ -125,7 +128,7 @@ function AdminShell({ email, onLogout }: { email: string; onLogout: () => void }
       </div>
 
       {/* Menú inferior (teléfono) */}
-      <nav aria-label="Panel" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t border-rule bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Panel" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t border-rule bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
         {NAV.map((n) => (
           <NavLink
             key={n.to}

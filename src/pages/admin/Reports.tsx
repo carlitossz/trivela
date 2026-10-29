@@ -26,6 +26,8 @@ function itemAmount(o: Order, i: OrderItem): { amount: number; currency: Currenc
   return { amount: Math.round(i.unit_usd * i.qty * 100) / 100, currency: 'USD' }
 }
 
+const CHANNEL_LABEL = { tienda: 'Tienda', externa: 'Externa' } as const
+
 interface Row {
   code: string
   created_at: string
@@ -37,6 +39,7 @@ interface Row {
   customer: string
   amount: number
   currency: Currency
+  channel: 'tienda' | 'externa'
 }
 
 export default function Reports() {
@@ -73,7 +76,8 @@ export default function Reports() {
           qty: i.qty,
           customer: o.customer_name,
           amount,
-          currency
+          currency,
+          channel: o.channel
         })
       }
     }
@@ -91,13 +95,20 @@ export default function Reports() {
       ['Total en dólares', Number(totalUsd.toFixed(2))]
     ]
     const detalle = [
-      ['Pedido', 'Franela', 'Talla', 'Dorsal y jugador', 'Tipo', 'Cantidad', 'Cliente', 'Monto', 'Moneda'],
-      ...rows.map((r) => [r.code, r.product_name, r.size, r.dorsal || 'Sin nombre/número', r.badge || '—', r.qty, r.customer, r.amount, CURRENCY_LABEL[r.currency]])
+      ['Pedido', 'Canal', 'Franela', 'Talla', 'Dorsal y jugador', 'Tipo', 'Cantidad', 'Cliente', 'Monto', 'Moneda'],
+      ...rows.map((r) => [r.code, CHANNEL_LABEL[r.channel], r.product_name, r.size, r.dorsal || 'Sin nombre/número', r.badge || '—', r.qty, r.customer, r.amount, CURRENCY_LABEL[r.currency]])
     ]
 
+    const wsResumen = XLSX.utils.aoa_to_sheet(resumen)
+    wsResumen['!cols'] = [{ wch: 38 }, { wch: 18 }]
+
+    const wsDetalle = XLSX.utils.aoa_to_sheet(detalle)
+    wsDetalle['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 26 }, { wch: 8 }, { wch: 22 }, { wch: 14 }, { wch: 10 }, { wch: 22 }, { wch: 12 }, { wch: 12 }]
+
+    // "Detalle" va primero para que sea la pestaña que se ve al abrir el archivo (venta por venta, como en la página)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), 'Resumen')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detalle), 'Detalle')
+    XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle')
+    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
     XLSX.writeFile(wb, `Ventas ${monthLabelCap}.xlsx`)
   }
 
@@ -141,10 +152,11 @@ export default function Reports() {
             <div className="a-card p-6 text-sm text-[#5C5C5C]">No hay ventas pagadas o entregadas en {monthLabel}.</div>
           ) : (
             <div className="a-card overflow-x-auto p-0">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[860px] text-sm">
                 <thead>
                   <tr className="border-b border-[#EEEEEA] text-left text-xs text-[#5C5C5C]">
                     <th className="px-4 py-3 font-semibold">Pedido</th>
+                    <th className="px-4 py-3 font-semibold">Canal</th>
                     <th className="px-4 py-3 font-semibold">Franela</th>
                     <th className="px-4 py-3 font-semibold">Talla</th>
                     <th className="px-4 py-3 font-semibold">Dorsal</th>
@@ -158,6 +170,13 @@ export default function Reports() {
                   {rows.map((r, i) => (
                     <tr key={i} className="border-b border-[#F3F3F0] last:border-0">
                       <td className="whitespace-nowrap px-4 py-2.5 text-[#5C5C5C]">{r.code}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5">
+                        {r.channel === 'externa' ? (
+                          <span className="rounded-md bg-[#EAE6F7] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#4B3B94]">Externa</span>
+                        ) : (
+                          <span className="text-[#8C8C8C]">Tienda</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 font-semibold">{r.product_name}</td>
                       <td className="px-4 py-2.5">{r.size}</td>
                       <td className="px-4 py-2.5 text-[#5C5C5C]">{r.dorsal || '—'}</td>

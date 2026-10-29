@@ -102,7 +102,10 @@ export default function Orders() {
           <article key={o.id} className="a-card flex flex-col gap-3 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-base font-bold">{o.code}</p>
+                <p className="flex items-center gap-1.5 text-base font-bold">
+                  {o.code}
+                  {o.channel === 'externa' && <span className="rounded-md bg-[#EAE6F7] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#4B3B94]">Externa</span>}
+                </p>
                 <p className="text-xs text-[#5C5C5C]">
                   {timeAgo(o.created_at)} · {new Date(o.created_at).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
                 </p>

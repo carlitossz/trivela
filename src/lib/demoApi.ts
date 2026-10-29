@@ -208,12 +208,61 @@ export function createDemoApi(): Api {
         total_bs: tBs,
         cash_amount: o.cash_amount,
         status: 'pendiente',
+        channel: 'tienda',
         notes: '',
         created_at: new Date().toISOString(),
         items
       })
       save(db)
       const result: OrderResult = { code, total_usd: tUsd, total_cop: tCop, total_bs: tBs, currency: pm.currency }
+      return wait(result)
+    },
+
+    async createExternalSale(s) {
+      const db = loadFresh()
+      if (!s.items.length) throw new Error('Agrega al menos una franela')
+
+      const items: Order['items'] = []
+      let tUsd = 0
+      let tCop = 0
+      for (const it of s.items) {
+        const p = db.products.find((x) => x.variants.some((v) => v.id === it.variant_id))
+        const v = p?.variants.find((x) => x.id === it.variant_id)
+        if (!p || !v) throw new Error('Una de las franelas ya no existe')
+        if (v.stock < it.qty) throw new Error(`Ya no queda stock de ${p.name} talla ${v.size}${v.dorsal ? ` (${v.dorsal})` : ''}`)
+      }
+      for (const it of s.items) {
+        const p = db.products.find((x) => x.variants.some((v) => v.id === it.variant_id))!
+        const v = p.variants.find((x) => x.id === it.variant_id)!
+        v.stock -= it.qty
+        items.push({ id: uid(), product_id: p.id, variant_id: v.id, product_name: p.name, size: v.size, dorsal: v.dorsal, qty: it.qty, unit_usd: p.price_usd, unit_cop: p.price_cop })
+        tUsd += p.price_usd * it.qty
+        tCop += p.price_cop * it.qty
+      }
+      const code = `TV-${String(db.nextCode).padStart(4, '0')}`
+      db.nextCode += 1
+      const tBs = db.settings.bs_rate != null ? Math.round(tUsd * db.settings.bs_rate * 100) / 100 : null
+      db.orders.unshift({
+        id: uid(),
+        code,
+        customer_name: s.customer_name.trim() || 'Venta externa',
+        customer_phone: '',
+        delivery: 'pickup',
+        address: '',
+        payment_method: s.payment_method.trim() || 'Venta externa',
+        currency: s.currency,
+        total_usd: tUsd,
+        total_cop: tCop,
+        total_bs: tBs,
+        cash_amount: null,
+        status: 'pagado',
+        channel: 'externa',
+        notes: s.notes,
+        created_at: new Date().toISOString(),
+        items
+      })
+      save(db)
+      const result: OrderResult = { code, total_usd: tUsd, total_cop: tCop, total_bs: tBs, currency: s.currency }
       return wait(result)
     },
 

@@ -90,6 +90,23 @@ export function createSupabaseApi(url: string, key: string): Api {
       }
     },
 
+    async createExternalSale(s) {
+      const { data, error } = await sb.rpc('create_external_sale', {
+        p_customer_name: s.customer_name,
+        p_currency: s.currency,
+        p_payment_method: s.payment_method,
+        p_items: s.items,
+        p_notes: s.notes
+      })
+      fail(error)
+      return {
+        ...data,
+        total_usd: Number(data.total_usd),
+        total_cop: Number(data.total_cop),
+        total_bs: data.total_bs == null ? null : Number(data.total_bs)
+      }
+    },
+
     async getSessionEmail() {
       const { data } = await sb.auth.getSession()
       const email = data.session?.user.email ?? null
